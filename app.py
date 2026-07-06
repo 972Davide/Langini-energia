@@ -15,30 +15,22 @@ st.set_page_config(page_title="Langini: Intelligenza Energetica", layout="wide")
 # --- CSS DEFINITIVO ---
 st.markdown("""
     <style>
-    /* Colori più leggibili per sfondo scuro */
-    .big-metric { 
-        font-size: 16px; 
-        color: #b0c4de !important; /* Blu grigiastro tenue */
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-    .big-value { 
-        font-size: 32px !important; 
-        font-weight: 800 !important; 
-        color: #ffcc00 !important; /* Giallo Ambra (ottimo contrasto su scuro) */
-        text-shadow: 0px 0px 10px rgba(255, 204, 0, 0.3);
-    }
-    .small-trend { 
-        font-size: 14px; 
-        color: #32cd32 !important; /* Verde brillante per le tendenze */
-        font-weight: bold; 
-    }
+    /* Layout Generale */
+    .big-metric { font-size: 16px; color: #b0c4de; text-transform: uppercase; }
+    .big-value { font-size: 32px; font-weight: 800; color: #ffcc00; }
+    .small-trend { font-size: 14px; color: #32cd32; font-weight: bold; }
     
-    /* Miglioramento layout colonne su mobile */
-    [data-testid="column"] {
-        background: rgba(255, 255, 255, 0.03);
-        padding: 10px;
-        border-radius: 10px;
+    /* LOGICA MOBILE: impila le colonne */
+    @media (max-width: 768px) {
+        [data-testid="column"] {
+            width: 100% !important;
+            flex: 1 1 100% !important;
+            margin-bottom: 15px !important;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px !important;
+            border-radius: 12px;
+        }
+        .big-value { font-size: 28px !important; }
     }
     </style>
     """, unsafe_allow_html=True)
