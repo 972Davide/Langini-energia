@@ -56,6 +56,7 @@ def carica_e_elabora():
 df = carica_e_elabora()
 
 if df is not None and not df.empty:
+    st.sidebar.write("Data più vecchia nel DB:", df['Tempo'].min())
     now = pd.Timestamp.now()
     df_oggi = df[df['Tempo'].dt.date == now.date()]
     
