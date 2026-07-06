@@ -12,7 +12,7 @@ URL_EOLICO = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBu3iMBBiAnzESlBy
 
 st.set_page_config(page_title="Langini: Intelligenza Energetica", layout="wide")
 
-# --- CSS PER PULSANTE AGGIORNA ---
+# --- CSS PERSONALIZZATO ---
 st.markdown("""
     <style>
     div.stButton > button:first-child {
@@ -23,6 +23,13 @@ st.markdown("""
         width: 100%;
         border-radius: 10px;
         font-weight: bold;
+    }
+    .card {
+        background-color: #262730;
+        padding: 20px;
+        border-radius: 10px;
+        border: 1px solid #454545;
+        margin-bottom: 20px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -77,17 +84,23 @@ if df is not None and not df.empty:
     st.markdown("---")
     st.subheader("🔮 Simulatore e Tendenza Meteo")
     col_pred, col_meteo = st.columns(2)
+    
     with col_pred:
+        st.markdown('<div class="card"><h4>Simulatore Produzione</h4>', unsafe_allow_html=True)
         m, q = np.polyfit(df['Vento (m/s)'].dropna(), df['Watt'].dropna(), 1)
-        vento_in = st.slider("Simula velocità vento (m/s)", 0.0, 20.0, 5.0)
+        vento_in = st.slider("Velocità vento (m/s)", 0.0, 20.0, 5.0)
         st.metric("Produzione Stimata", f"{max(0, (m * vento_in) + q):.2f} W")
+        st.markdown('</div>', unsafe_allow_html=True)
+
     with col_meteo:
+        st.markdown('<div class="card"><h4>Tendenza Barometrica</h4>', unsafe_allow_html=True)
         if len(df) > 180:
             var = df['Pressione Locale'].iloc[-1] - df['Pressione Locale'].iloc[-180]
-            st.metric("Variazione Pressione (3h)", f"{var:.2f} hPa")
-            if var > 0.5: st.info("Tendenza: In miglioramento")
-            elif var < -0.5: st.warning("Tendenza: Instabilità in arrivo")
-            else: st.success("Tendenza: Stabile")
+            st.metric("Variazione (3h)", f"{var:.2f} hPa")
+            if var > 0.5: st.success("Stato: In miglioramento")
+            elif var < -0.5: st.error("Stato: Instabilità in arrivo")
+            else: st.info("Stato: Stabile")
+        st.markdown('</div>', unsafe_allow_html=True)
 
     st.subheader("📊 Analisi Vento vs Watt (Oggi)")
     fig = make_subplots(specs=[[{"secondary_y": True}]])
