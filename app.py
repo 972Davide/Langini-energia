@@ -15,17 +15,22 @@ st.set_page_config(page_title="Langini: Intelligenza Energetica", layout="wide")
 # --- CSS DEFINITIVO ---
 st.markdown("""
     <style>
-    /* Pulsanti e Card */
-    div.stButton button { height: 50px; width: 100%; font-size: 18px; background-color: #ff4b4b; color: white; border-radius: 8px; font-weight: bold; }
-    .card { background-color: #262730; padding: 25px; border-radius: 15px; border: 1px solid #454545; margin-bottom: 20px; }
+    /* Pulsanti */
+    div.stButton button { width: 100%; height: auto; padding: 15px; font-size: 16px; background-color: #ff4b4b; color: white; border-radius: 8px; }
     
-    /* Metriche Grandi */
-    .big-metric { font-size: 20px; color: #aaaaaa; margin-bottom: 5px; }
-    .big-value { font-size: 45px; font-weight: 900; color: white; margin-bottom: 10px; }
-    .small-trend { font-size: 18px; color: #00ff00; font-weight: bold; }
+    /* Gestione Card per Mobile */
+    .big-metric { font-size: 16px; color: #aaaaaa; }
+    .big-value { font-size: 30px; font-weight: bold; color: white; }
     
-    /* Alert */
-    div[role="alert"] { font-size: 20px !important; font-weight: bold !important; padding: 20px !important; }
+    /* Media Query: Se lo schermo è stretto (mobile) */
+    @media (max-width: 600px) {
+        .big-value { font-size: 24px !important; }
+        .big-metric { font-size: 14px !important; }
+        [data-testid="column"] { margin-bottom: 20px; }
+    }
+    
+    /* Assicuriamoci che i grafici non escano dai bordi */
+    .stPlotlyChart { width: 100% !important; }
     </style>
     """, unsafe_allow_html=True)
 
