@@ -15,22 +15,31 @@ st.set_page_config(page_title="Langini: Intelligenza Energetica", layout="wide")
 # --- CSS DEFINITIVO ---
 st.markdown("""
     <style>
-    /* Pulsanti */
-    div.stButton button { width: 100%; height: auto; padding: 15px; font-size: 16px; background-color: #ff4b4b; color: white; border-radius: 8px; }
-    
-    /* Gestione Card per Mobile */
-    .big-metric { font-size: 16px; color: #aaaaaa; }
-    .big-value { font-size: 30px; font-weight: bold; color: white; }
-    
-    /* Media Query: Se lo schermo è stretto (mobile) */
-    @media (max-width: 600px) {
-        .big-value { font-size: 24px !important; }
-        .big-metric { font-size: 14px !important; }
-        [data-testid="column"] { margin-bottom: 20px; }
+    /* Colori più leggibili per sfondo scuro */
+    .big-metric { 
+        font-size: 16px; 
+        color: #b0c4de !important; /* Blu grigiastro tenue */
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .big-value { 
+        font-size: 32px !important; 
+        font-weight: 800 !important; 
+        color: #ffcc00 !important; /* Giallo Ambra (ottimo contrasto su scuro) */
+        text-shadow: 0px 0px 10px rgba(255, 204, 0, 0.3);
+    }
+    .small-trend { 
+        font-size: 14px; 
+        color: #32cd32 !important; /* Verde brillante per le tendenze */
+        font-weight: bold; 
     }
     
-    /* Assicuriamoci che i grafici non escano dai bordi */
-    .stPlotlyChart { width: 100% !important; }
+    /* Miglioramento layout colonne su mobile */
+    [data-testid="column"] {
+        background: rgba(255, 255, 255, 0.03);
+        padding: 10px;
+        border-radius: 10px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
