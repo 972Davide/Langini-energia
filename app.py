@@ -12,44 +12,36 @@ URL_EOLICO = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBu3iMBBiAnzESlBy
 
 st.set_page_config(page_title="Langini: Intelligenza Energetica", layout="wide")
 
-# --- CSS PERSONALIZZATO (AGGIORNATO) ---
+# --- CSS FORZATO ---
 st.markdown("""
     <style>
-    /* Pulsante Aggiorna */
-    div.stButton > button:first-child {
-        background-color: #ff4b4b;
-        color: white;
+    /* Pulsante: Forziamo la dimensione su tutto ciò che è un pulsante */
+    div.stButton button {
+        height: 60px !important;
+        width: 100% !important;
         font-size: 24px !important;
-        height: 3em !important;
-        width: 100%;
-        border-radius: 10px;
-        font-weight: bold;
+        background-color: #ff4b4b !important;
+        color: white !important;
+        border-radius: 10px !important;
     }
-    /* Metriche: Etichetta e Valore */
-    [data-testid="stMetricLabel"] p {
-        font-size: 24px !important;
-        font-weight: 800 !important;
+    
+    /* Metriche: Ingrandiamo etichetta e valore */
+    [data-testid="stMetricLabel"] {
+        font-size: 26px !important;
     }
     [data-testid="stMetricValue"] {
-        font-size: 50px !important;
-        font-weight: 900 !important;
+        font-size: 55px !important;
     }
-    /* Box Stato (Success, Error, Info) */
-    div[data-testid="stAlert"] {
-        font-size: 22px !important;
-        font-weight: bold !important;
+    
+    /* Box Stato: Ingrandiamo il testo dentro l'alert */
+    div[role="alert"] {
+        font-size: 24px !important;
+        padding: 20px !important;
     }
-    /* Titoli Card */
+    
+    /* Card Titoli */
     .card h4 {
-        font-size: 28px !important;
-        margin-bottom: 15px;
-    }
-    .card {
-        background-color: #262730;
-        padding: 25px;
-        border-radius: 15px;
-        border: 1px solid #454545;
-        margin-bottom: 20px;
+        font-size: 30px !important;
     }
     </style>
     """, unsafe_allow_html=True)
