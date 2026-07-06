@@ -12,7 +12,22 @@ URL_EOLICO = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBu3iMBBiAnzESlBy
 
 st.set_page_config(page_title="Langini: Intelligenza Energetica", layout="wide")
 
-# --- TESTATA CON PULSANTE AGGIORNA ---
+# --- CSS PER PULSANTE AGGIORNA ---
+st.markdown("""
+    <style>
+    div.stButton > button:first-child {
+        background-color: #ff4b4b;
+        color: white;
+        font-size: 20px;
+        height: 3em;
+        width: 100%;
+        border-radius: 10px;
+        font-weight: bold;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- TESTATA ---
 c_title, c_button = st.columns([0.85, 0.15])
 with c_title:
     st.title("⚡ Langini: Intelligenza Energetica")
@@ -45,24 +60,20 @@ if df is not None and not df.empty:
     now = pd.Timestamp.now()
     df_oggi = df[df['Tempo'].dt.date == now.date()]
     
-    # 1. Metriche Meteo
     st.subheader("🌡️ Meteo Oggi: Analisi")
     c1, c2, c3 = st.columns(3)
     c1.metric("Temperatura", f"Max: {df_oggi['Temperatura'].max():.1f}°C", f"Med: {df_oggi['Temperatura'].mean():.1f}°C")
     c2.metric("Vento", f"Max: {df_oggi['Vento (m/s)'].max():.1f} m/s", f"Med: {df_oggi['Vento (m/s)'].mean():.1f} m/s")
     c3.metric("Pressione", f"Max: {df_oggi['Pressione Locale'].max():.0f} hPa", f"Med: {df_oggi['Pressione Locale'].mean():.0f} hPa")
 
-    # 2. Metriche Energia
     st.subheader("🔋 Produzione ed Economia")
     e_kw = df[df['Tempo'] >= (now - pd.Timedelta(days=7))]['Watt'].sum()/1000
     e_mo = df[df['Tempo'] >= (now - pd.Timedelta(days=30))]['Watt'].sum()/1000
-    
     ee1, ee2, ee3 = st.columns(3)
     ee1.metric("Energia Settimanale", f"{e_kw:.1f} kWh", f"€ {e_kw * PREZZO_GSE_KW:.2f}")
     ee2.metric("Energia Mensile", f"{e_mo:.1f} kWh", f"€ {e_mo * PREZZO_GSE_KW:.2f}")
     ee3.metric("Stima Annuale", f"{df[df['Tempo'] >= (now - pd.Timedelta(days=365))]['Watt'].sum()/1000:.1f} kWh")
 
-    # 3. Previsioni
     st.markdown("---")
     st.subheader("🔮 Simulatore e Tendenza Meteo")
     col_pred, col_meteo = st.columns(2)
@@ -78,7 +89,6 @@ if df is not None and not df.empty:
             elif var < -0.5: st.warning("Tendenza: Instabilità in arrivo")
             else: st.success("Tendenza: Stabile")
 
-    # 4. Grafico
     st.subheader("📊 Analisi Vento vs Watt (Oggi)")
     fig = make_subplots(specs=[[{"secondary_y": True}]])
     fig.add_trace(go.Bar(x=df_oggi['Tempo'], y=df_oggi['Vento (m/s)'], name="Vento", marker_color='skyblue'), secondary_y=False)
