@@ -12,14 +12,15 @@ URL_EOLICO = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBu3iMBBiAnzESlBy
 
 st.set_page_config(page_title="Langini: Intelligenza Energetica", layout="wide")
 
-# --- CSS FORZATO E PULITO ---
+# --- CSS DEFINITIVO (SCALABILE E GRANDE) ---
 st.markdown("""
     <style>
-    div.stButton button { height: 50px; width: 100%; font-size: 18px; background-color: #ff4b4b; color: white; border-radius: 8px; font-weight: bold; }
-    .big-metric { font-size: 22px; color: #aaaaaa; margin-bottom: 5px; }
-    .big-value { font-size: 45px; font-weight: bold; color: white; margin-bottom: 25px; }
-    .card { background-color: #262730; padding: 25px; border-radius: 15px; border: 1px solid #454545; margin-bottom: 20px; }
-    .card h4 { font-size: 28px; margin-bottom: 15px; }
+    div.stButton button { height: 60px; width: 100%; font-size: 20px !important; background-color: #ff4b4b; color: white; border-radius: 10px; font-weight: bold; }
+    .big-metric { font-size: 26px !important; color: #aaaaaa; margin-bottom: 10px; font-weight: 600; }
+    .big-value { font-size: 55px !important; font-weight: 900 !important; color: white; margin-bottom: 25px; }
+    .card { background-color: #262730; padding: 30px; border-radius: 15px; border: 1px solid #454545; margin-bottom: 20px; }
+    .card h4 { font-size: 32px !important; margin-bottom: 20px; }
+    div[role="alert"] { font-size: 24px !important; font-weight: bold !important; padding: 25px !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -56,29 +57,32 @@ if df is not None and not df.empty:
     now = pd.Timestamp.now()
     df_oggi = df[df['Tempo'].dt.date == now.date()]
     
-    # METEO
-    st.subheader("🌡️ Meteo Oggi")
+    # SEZIONE METEO
+    st.subheader("🌡️ Meteo Oggi: Analisi")
     c1, c2, c3 = st.columns(3)
-    for col, label, val in zip([c1, c2, c3], ["Temperatura", "Velocità Vento", "Pressione"], 
-                                [f"{df_oggi['Temperatura'].max():.1f}°C", f"{df_oggi['Vento (m/s)'].max():.1f} m/s", f"{df_oggi['Pressione Locale'].max():.0f} hPa"]):
+    dati_meteo = [("Temperatura", f"{df_oggi['Temperatura'].max():.1f}°C"), 
+                  ("Velocità Vento", f"{df_oggi['Vento (m/s)'].max():.1f} m/s"), 
+                  ("Pressione", f"{df_oggi['Pressione Locale'].max():.0f} hPa")]
+    for col, (label, val) in zip([c1, c2, c3], dati_meteo):
         with col:
             st.markdown(f'<div class="big-metric">{label}</div><div class="big-value">{val}</div>', unsafe_allow_html=True)
 
-    # PRODUZIONE
-    st.subheader("🔋 Produzione ed Economia")
+    # SEZIONE PRODUZIONE
+    st.subheader("🔋 Produzione ed Economia (Stima GSE)")
     e_kw = df[df['Tempo'] >= (now - pd.Timedelta(days=7))]['Watt'].sum() / 1000
     e_mo = df[df['Tempo'] >= (now - pd.Timedelta(days=30))]['Watt'].sum() / 1000
     giorni = (df['Tempo'].max() - df['Tempo'].min()).days
     stima_ann = (df['Watt'].sum() / 1000 / giorni * 365) if giorni > 0 else e_mo * 12
     
     ee1, ee2, ee3 = st.columns(3)
-    for col, label, val in zip([ee1, ee2, ee3], ["Energia Settimanale", "Energia Mensile", "Stima Annuale"], 
-                                [f"{e_kw:.1f} kWh", f"{e_mo:.1f} kWh", f"{stima_ann:.1f} kWh"]):
+    dati_prod = [("Energia Settimanale", f"{e_kw:.1f} kWh"), ("Energia Mensile", f"{e_mo:.1f} kWh"), ("Stima Annuale", f"{stima_ann:.1f} kWh")]
+    for col, (label, val) in zip([ee1, ee2, ee3], dati_prod):
         with col:
             st.markdown(f'<div class="big-metric">{label}</div><div class="big-value">{val}</div>', unsafe_allow_html=True)
 
-    # SIMULATORE
+    # SIMULATORE E TENDENZA
     st.markdown("---")
+    st.subheader("🔮 Simulatore e Tendenza Meteo 🌦️")
     col_pred, col_meteo = st.columns(2)
     with col_pred:
         st.markdown('<div class="card"><h4>Simulatore</h4>', unsafe_allow_html=True)
@@ -87,7 +91,7 @@ if df is not None and not df.empty:
         st.markdown(f'<div class="big-metric">Produzione Stimata</div><div class="big-value">{max(0, (m * v_in) + q):.2f} W</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
     with col_meteo:
-        st.markdown('<div class="card"><h4>Tendenza Meteo</h4>', unsafe_allow_html=True)
+        st.markdown('<div class="card"><h4>Tendenza Barometrica</h4>', unsafe_allow_html=True)
         var = df['Pressione Locale'].iloc[-1] - df['Pressione Locale'].iloc[-180] if len(df) > 180 else 0
         st.markdown(f'<div class="big-metric">Variazione (3h)</div><div class="big-value">{var:.2f} hPa</div>', unsafe_allow_html=True)
         if var > 0.5: st.success("Stato: In miglioramento")
