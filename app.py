@@ -12,7 +12,7 @@ URL_EOLICO = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBu3iMBBiAnzESlBy
 
 st.set_page_config(page_title="Langini: Intelligenza Energetica", layout="wide")
 
-# --- CSS PERSONALIZZATO ---
+# --- CSS PERSONALIZZATO (MAGGIOR LEGGIBILITÀ) ---
 st.markdown("""
     <style>
     div.stButton > button:first-child {
@@ -24,10 +24,19 @@ st.markdown("""
         border-radius: 10px;
         font-weight: bold;
     }
+    /* Aumenta dimensione testo etichette metriche */
+    [data-testid="stMetricLabel"] {
+        font-size: 20px !important;
+        font-weight: bold;
+    }
+    /* Aumenta dimensione valore metriche */
+    [data-testid="stMetricValue"] {
+        font-size: 40px !important;
+    }
     .card {
         background-color: #262730;
-        padding: 20px;
-        border-radius: 10px;
+        padding: 25px;
+        border-radius: 15px;
         border: 1px solid #454545;
         margin-bottom: 20px;
     }
@@ -67,36 +76,36 @@ if df is not None and not df.empty:
     now = pd.Timestamp.now()
     df_oggi = df[df['Tempo'].dt.date == now.date()]
     
-    st.subheader("🌡️ Meteo Oggi: Analisi")
+    st.subheader("🌡️ Meteo Oggi")
     c1, c2, c3 = st.columns(3)
-    c1.metric("Temperatura", f"Max: {df_oggi['Temperatura'].max():.1f}°C", f"Med: {df_oggi['Temperatura'].mean():.1f}°C")
-    c2.metric("Vento", f"Max: {df_oggi['Vento (m/s)'].max():.1f} m/s", f"Med: {df_oggi['Vento (m/s)'].mean():.1f} m/s")
-    c3.metric("Pressione", f"Max: {df_oggi['Pressione Locale'].max():.0f} hPa", f"Med: {df_oggi['Pressione Locale'].mean():.0f} hPa")
+    c1.metric("Temperatura", f"{df_oggi['Temperatura'].max():.1f}°C")
+    c2.metric("Velocità Vento", f"{df_oggi['Vento (m/s)'].max():.1f} m/s")
+    c3.metric("Pressione", f"{df_oggi['Pressione Locale'].max():.0f} hPa")
 
     st.subheader("🔋 Produzione ed Economia")
     e_kw = df[df['Tempo'] >= (now - pd.Timedelta(days=7))]['Watt'].sum()/1000
     e_mo = df[df['Tempo'] >= (now - pd.Timedelta(days=30))]['Watt'].sum()/1000
     ee1, ee2, ee3 = st.columns(3)
-    ee1.metric("Energia Settimanale", f"{e_kw:.1f} kWh", f"€ {e_kw * PREZZO_GSE_KW:.2f}")
-    ee2.metric("Energia Mensile", f"{e_mo:.1f} kWh", f"€ {e_mo * PREZZO_GSE_KW:.2f}")
+    ee1.metric("Energia Settimanale", f"{e_kw:.1f} kWh")
+    ee2.metric("Energia Mensile", f"{e_mo:.1f} kWh")
     ee3.metric("Stima Annuale", f"{df[df['Tempo'] >= (now - pd.Timedelta(days=365))]['Watt'].sum()/1000:.1f} kWh")
 
     st.markdown("---")
-    st.subheader("🔮 Simulatore e Tendenza Meteo")
+    st.subheader("🔮 Simulatore e Tendenza")
     col_pred, col_meteo = st.columns(2)
     
     with col_pred:
-        st.markdown('<div class="card"><h4>Simulatore Produzione</h4>', unsafe_allow_html=True)
+        st.markdown('<div class="card"><h4>Simulatore</h4>', unsafe_allow_html=True)
         m, q = np.polyfit(df['Vento (m/s)'].dropna(), df['Watt'].dropna(), 1)
-        vento_in = st.slider("Velocità vento (m/s)", 0.0, 20.0, 5.0)
+        vento_in = st.slider("Velocità Vento (m/s)", 0.0, 20.0, 5.0)
         st.metric("Produzione Stimata", f"{max(0, (m * vento_in) + q):.2f} W")
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col_meteo:
-        st.markdown('<div class="card"><h4>Tendenza Barometrica</h4>', unsafe_allow_html=True)
+        st.markdown('<div class="card"><h4>Tendenza Meteo</h4>', unsafe_allow_html=True)
         if len(df) > 180:
             var = df['Pressione Locale'].iloc[-1] - df['Pressione Locale'].iloc[-180]
-            st.metric("Variazione (3h)", f"{var:.2f} hPa")
+            st.metric("Variazione Pressione (3h)", f"{var:.2f} hPa")
             if var > 0.5: st.success("Stato: In miglioramento")
             elif var < -0.5: st.error("Stato: Instabilità in arrivo")
             else: st.info("Stato: Stabile")
