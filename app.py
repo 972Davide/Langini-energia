@@ -66,18 +66,31 @@ if df is not None and not df.empty:
     c2.markdown(f'<div class="big-metric">Velocità Vento</div><div class="big-value">{df_oggi["Vento (m/s)"].max():.1f} m/s</div><div class="small-trend">↑ Med: {df_oggi["Vento (m/s)"].mean():.1f} m/s</div>', unsafe_allow_html=True)
     c3.markdown(f'<div class="big-metric">Pressione</div><div class="big-value">{df_oggi["Pressione Locale"].max():.0f} hPa</div><div class="small-trend">↑ Med: {df_oggi["Pressione Locale"].mean():.0f} hPa</div>', unsafe_allow_html=True)
 
-    # 2. PRODUZIONE (Filtri corretti)
+    # 2. PRODUZIONE ED ECONOMIA (Calcolo Reale)
     st.subheader("🔋 Produzione ed Economia (Stima GSE)")
-    e_sett = df[df['Tempo'] >= (now - pd.Timedelta(days=7))]['Watt'].sum() / 1000
-    e_mese = df[df['Tempo'] >= (now - pd.Timedelta(days=30))]['Watt'].sum() / 1000
-    giorni = (df['Tempo'].max() - df['Tempo'].min()).days
-    e_anno = (df['Watt'].sum() / 1000 / giorni * 365) if giorni > 0 else e_mese * 12
     
+    # Filtro temporale rigoroso
+    mask_sett = (df['Tempo'] >= (now - pd.Timedelta(days=7)))
+    mask_mese = (df['Tempo'] >= (now - pd.Timedelta(days=30)))
+    
+    # Calcolo dei kWh reali dai dati
+    e_sett = df.loc[mask_sett, 'Watt'].sum() / 1000
+    e_mese = df.loc[mask_mese, 'Watt'].sum() / 1000
+    
+    # Calcolo Annuale basato sulla media giornaliera reale dei dati disponibili
+    giorni_totali = (df['Tempo'].max() - df['Tempo'].min()).days
+    if giorni_totali > 0:
+        media_giornaliera = (df['Watt'].sum() / 1000) / giorni_totali
+        e_anno = media_giornaliera * 365
+    else:
+        e_anno = e_mese * 12
+
     ee1, ee2, ee3 = st.columns(3)
+    
+    # Display con Valori in Euro e kWh
     ee1.markdown(f'<div class="big-metric">Energia Settimanale</div><div class="big-value">{e_sett:.1f} kWh</div><div class="small-trend">↑ € {e_sett * PREZZO_GSE_KW:.2f}</div>', unsafe_allow_html=True)
     ee2.markdown(f'<div class="big-metric">Energia Mensile</div><div class="big-value">{e_mese:.1f} kWh</div><div class="small-trend">↑ € {e_mese * PREZZO_GSE_KW:.2f}</div>', unsafe_allow_html=True)
     ee3.markdown(f'<div class="big-metric">Stima Annuale</div><div class="big-value">{e_anno:.1f} kWh</div>', unsafe_allow_html=True)
-
     # 3. SIMULATORE E TENDENZA
     st.markdown("---")
     col_pred, col_meteo = st.columns(2)
