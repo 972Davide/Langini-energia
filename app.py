@@ -12,26 +12,29 @@ URL_EOLICO = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBu3iMBBiAnzESlBy
 
 st.set_page_config(page_title="Langini: Intelligenza Energetica", layout="wide")
 
-# --- CSS PERSONALIZZATO (MAGGIOR LEGGIBILITÀ) ---
+# --- CSS PERSONALIZZATO (FORZATO) ---
 st.markdown("""
     <style>
     div.stButton > button:first-child {
         background-color: #ff4b4b;
         color: white;
-        font-size: 20px;
-        height: 3em;
+        font-size: 24px !important;
+        height: 3em !important;
         width: 100%;
         border-radius: 10px;
         font-weight: bold;
     }
-    /* Aumenta dimensione testo etichette metriche */
-    [data-testid="stMetricLabel"] {
-        font-size: 20px !important;
-        font-weight: bold;
+    [data-testid="stMetricLabel"] p {
+        font-size: 24px !important;
+        font-weight: 800 !important;
+        color: #ffffff !important;
     }
-    /* Aumenta dimensione valore metriche */
     [data-testid="stMetricValue"] {
-        font-size: 40px !important;
+        font-size: 50px !important;
+        font-weight: 900 !important;
+    }
+    .card h4 {
+        font-size: 28px !important;
     }
     .card {
         background-color: #262730;
