@@ -12,37 +12,14 @@ URL_EOLICO = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBu3iMBBiAnzESlBy
 
 st.set_page_config(page_title="Langini: Intelligenza Energetica", layout="wide")
 
-# --- CSS FORZATO ---
 st.markdown("""
     <style>
-    /* Pulsante: Forziamo la dimensione su tutto ciò che è un pulsante */
-    div.stButton button {
-        height: 60px !important;
-        width: 100% !important;
-        font-size: 24px !important;
-        background-color: #ff4b4b !important;
-        color: white !important;
-        border-radius: 10px !important;
-    }
+    /* Pulsante Aggiorna */
+    div.stButton button { height: 50px; width: 100%; font-size: 18px; background-color: #ff4b4b; color: white; border-radius: 8px; }
     
-    /* Metriche: Ingrandiamo etichetta e valore */
-    [data-testid="stMetricLabel"] {
-        font-size: 26px !important;
-    }
-    [data-testid="stMetricValue"] {
-        font-size: 55px !important;
-    }
-    
-    /* Box Stato: Ingrandiamo il testo dentro l'alert */
-    div[role="alert"] {
-        font-size: 24px !important;
-        padding: 20px !important;
-    }
-    
-    /* Card Titoli */
-    .card h4 {
-        font-size: 30px !important;
-    }
+    /* Box Personalizzato per dati grandi */
+    .big-metric { font-size: 20px; color: #888; margin-bottom: -10px; }
+    .big-value { font-size: 42px; font-weight: bold; color: white; margin-bottom: 20px; }
     </style>
     """, unsafe_allow_html=True)
 
