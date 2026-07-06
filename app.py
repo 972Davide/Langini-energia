@@ -12,13 +12,20 @@ URL_EOLICO = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBu3iMBBiAnzESlBy
 
 st.set_page_config(page_title="Langini: Intelligenza Energetica", layout="wide")
 
-# --- CSS ---
+# --- CSS DEFINITIVO ---
 st.markdown("""
     <style>
+    /* Pulsanti e Card */
     div.stButton button { height: 50px; width: 100%; font-size: 18px; background-color: #ff4b4b; color: white; border-radius: 8px; font-weight: bold; }
-    .big-metric { font-size: 20px; color: #888; }
-    .big-value { font-size: 40px; font-weight: bold; color: white; margin-bottom: 5px; }
-    .small-trend { font-size: 16px; color: #00ff00; }
+    .card { background-color: #262730; padding: 25px; border-radius: 15px; border: 1px solid #454545; margin-bottom: 20px; }
+    
+    /* Metriche Grandi */
+    .big-metric { font-size: 20px; color: #aaaaaa; margin-bottom: 5px; }
+    .big-value { font-size: 45px; font-weight: 900; color: white; margin-bottom: 10px; }
+    .small-trend { font-size: 18px; color: #00ff00; font-weight: bold; }
+    
+    /* Alert */
+    div[role="alert"] { font-size: 20px !important; font-weight: bold !important; padding: 20px !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -52,22 +59,47 @@ if df is not None and not df.empty:
     now = pd.Timestamp.now()
     df_oggi = df[df['Tempo'].dt.date == now.date()]
     
-    # 1. METEO CON FRECCE E MEDIE
+    # 1. METEO
     st.subheader("🌡️ Meteo Oggi: Analisi")
     c1, c2, c3 = st.columns(3)
     c1.markdown(f'<div class="big-metric">Temperatura</div><div class="big-value">{df_oggi["Temperatura"].max():.1f}°C</div><div class="small-trend">↑ Med: {df_oggi["Temperatura"].mean():.1f}°C</div>', unsafe_allow_html=True)
     c2.markdown(f'<div class="big-metric">Velocità Vento</div><div class="big-value">{df_oggi["Vento (m/s)"].max():.1f} m/s</div><div class="small-trend">↑ Med: {df_oggi["Vento (m/s)"].mean():.1f} m/s</div>', unsafe_allow_html=True)
     c3.markdown(f'<div class="big-metric">Pressione</div><div class="big-value">{df_oggi["Pressione Locale"].max():.0f} hPa</div><div class="small-trend">↑ Med: {df_oggi["Pressione Locale"].mean():.0f} hPa</div>', unsafe_allow_html=True)
 
-    # 2. PRODUZIONE ED ECONOMIA (Logica Separata)
+    # 2. PRODUZIONE (Filtri corretti)
     st.subheader("🔋 Produzione ed Economia (Stima GSE)")
     e_sett = df[df['Tempo'] >= (now - pd.Timedelta(days=7))]['Watt'].sum() / 1000
     e_mese = df[df['Tempo'] >= (now - pd.Timedelta(days=30))]['Watt'].sum() / 1000
-    e_anno = (df['Watt'].sum() / 1000 / (df['Tempo'].max() - df['Tempo'].min()).days * 365) if (df['Tempo'].max() - df['Tempo'].min()).days > 0 else e_mese * 12
+    giorni = (df['Tempo'].max() - df['Tempo'].min()).days
+    e_anno = (df['Watt'].sum() / 1000 / giorni * 365) if giorni > 0 else e_mese * 12
     
     ee1, ee2, ee3 = st.columns(3)
     ee1.markdown(f'<div class="big-metric">Energia Settimanale</div><div class="big-value">{e_sett:.1f} kWh</div><div class="small-trend">↑ € {e_sett * PREZZO_GSE_KW:.2f}</div>', unsafe_allow_html=True)
     ee2.markdown(f'<div class="big-metric">Energia Mensile</div><div class="big-value">{e_mese:.1f} kWh</div><div class="small-trend">↑ € {e_mese * PREZZO_GSE_KW:.2f}</div>', unsafe_allow_html=True)
     ee3.markdown(f'<div class="big-metric">Stima Annuale</div><div class="big-value">{e_anno:.1f} kWh</div>', unsafe_allow_html=True)
 
-    # ... [Resto del codice per Simulatore e Grafico rimane invariato]
+    # 3. SIMULATORE E TENDENZA
+    st.markdown("---")
+    col_pred, col_meteo = st.columns(2)
+    with col_pred:
+        st.markdown('<div class="card"><h4>🔮 Simulatore Produzione</h4>', unsafe_allow_html=True)
+        m, q = np.polyfit(df['Vento (m/s)'].dropna(), df['Watt'].dropna(), 1)
+        v_in = st.slider("Velocità Vento (m/s)", 0.0, 20.0, 5.0)
+        st.markdown(f'<div class="big-metric">Produzione Stimata</div><div class="big-value">{max(0, (m * v_in) + q):.2f} W</div>', unsafe_allow_html=True)
+    with col_meteo:
+        st.markdown('<div class="card"><h4>🌦️ Tendenza Barometrica</h4>', unsafe_allow_html=True)
+        var = df['Pressione Locale'].iloc[-1] - df['Pressione Locale'].iloc[-180] if len(df) > 180 else 0
+        st.markdown(f'<div class="big-metric">Variazione (3h)</div><div class="big-value">{var:.2f} hPa</div>', unsafe_allow_html=True)
+        if var > 0.5: st.success("Stato: In miglioramento")
+        elif var < -0.5: st.error("Stato: Instabilità in arrivo")
+        else: st.info("Stato: Stabile")
+
+    # 4. GRAFICO (Ottimizzato)
+    st.subheader("📊 Analisi Vento vs Watt (Oggi)")
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+    fig.add_trace(go.Bar(x=df_oggi['Tempo'], y=df_oggi['Vento (m/s)'], name="Vento", marker_color='rgba(135, 206, 235, 0.6)'), secondary_y=False)
+    fig.add_trace(go.Scatter(x=df_oggi['Tempo'], y=df_oggi['Watt'], name="Watt", line=dict(color='#FFD700', width=3)), secondary_y=True)
+    fig.update_layout(template="plotly_dark", height=450, margin=dict(l=20, r=20, t=20, b=20))
+    st.plotly_chart(fig, use_container_width=True)
+else:
+    st.warning("Dati non ancora disponibili. Verifica il collegamento ai fogli Google.")
