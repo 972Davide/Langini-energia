@@ -12,9 +12,10 @@ URL_EOLICO = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBu3iMBBiAnzESlBy
 
 st.set_page_config(page_title="Langini: Intelligenza Energetica", layout="wide")
 
-# --- CSS PERSONALIZZATO (FORZATO) ---
+# --- CSS PERSONALIZZATO (AGGIORNATO) ---
 st.markdown("""
     <style>
+    /* Pulsante Aggiorna */
     div.stButton > button:first-child {
         background-color: #ff4b4b;
         color: white;
@@ -24,17 +25,24 @@ st.markdown("""
         border-radius: 10px;
         font-weight: bold;
     }
+    /* Metriche: Etichetta e Valore */
     [data-testid="stMetricLabel"] p {
         font-size: 24px !important;
         font-weight: 800 !important;
-        color: #ffffff !important;
     }
     [data-testid="stMetricValue"] {
         font-size: 50px !important;
         font-weight: 900 !important;
     }
+    /* Box Stato (Success, Error, Info) */
+    div[data-testid="stAlert"] {
+        font-size: 22px !important;
+        font-weight: bold !important;
+    }
+    /* Titoli Card */
     .card h4 {
         font-size: 28px !important;
+        margin-bottom: 15px;
     }
     .card {
         background-color: #262730;
