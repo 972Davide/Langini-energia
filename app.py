@@ -62,13 +62,37 @@ if df is not None and not df.empty:
     c2.metric("Velocità Vento", f"{df_oggi['Vento (m/s)'].max():.1f} m/s")
     c3.metric("Pressione", f"{df_oggi['Pressione Locale'].max():.0f} hPa")
 
-    st.subheader("🔋 Produzione ed Economia")
-    e_kw = df[df['Tempo'] >= (now - pd.Timedelta(days=7))]['Watt'].sum()/1000
-    e_mo = df[df['Tempo'] >= (now - pd.Timedelta(days=30))]['Watt'].sum()/1000
+st.subheader("🔋 Produzione ed Economia")
+    
+    # Filtro preciso per gli ultimi 7 giorni
+    mask_week = df['Tempo'] >= (now - pd.Timedelta(days=7))
+    e_kw = df[mask_week]['Watt'].sum() / 1000
+    
+    # Filtro preciso per gli ultimi 30 giorni
+    mask_month = df['Tempo'] >= (now - pd.Timedelta(days=30))
+    e_mo = df[mask_month]['Watt'].sum() / 1000
+    
+    # Calcolo Stima Annuale (media giornaliera * 365)
+    giorni_disponibili = (df['Tempo'].max() - df['Tempo'].min()).days
+    if giorni_disponibili > 0:
+        stima_annuale = (df['Watt'].sum() / 1000 / giorni_disponibili) * 365
+    else:
+        stima_annuale = e_mo * 12 # fallback se abbiamo pochi giorni
+    
     ee1, ee2, ee3 = st.columns(3)
-    ee1.metric("Energia Settimanale", f"{e_kw:.1f} kWh")
-    ee2.metric("Energia Mensile", f"{e_mo:.1f} kWh")
-    ee3.metric("Stima Annuale", f"{df[df['Tempo'] >= (now - pd.Timedelta(days=365))]['Watt'].sum()/1000:.1f} kWh")
+    
+    # Usiamo le nostre classi personalizzate per le dimensioni corrette
+    with ee1:
+        st.markdown('<div class="big-metric">Energia Settimanale</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="big-value">{e_kw:.1f} kWh</div>', unsafe_allow_html=True)
+        
+    with ee2:
+        st.markdown('<div class="big-metric">Energia Mensile</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="big-value">{e_mo:.1f} kWh</div>', unsafe_allow_html=True)
+        
+    with ee3:
+        st.markdown('<div class="big-metric">Stima Annuale</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="big-value">{stima_annuale:.1f} kWh</div>', unsafe_allow_html=True)
 
     st.markdown("---")
     st.subheader("🔮 Simulatore e Tendenza")
