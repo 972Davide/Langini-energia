@@ -18,7 +18,6 @@ st.set_page_config(page_title="Langini: Intelligenza Energetica", layout="wide")
 # --- CSS DEFINITIVO ---
 st.markdown("""
     <style>
-    /* Layout Generale */
     .big-metric { font-size: 16px; color: #b0c4de; text-transform: uppercase; }
     .big-value { font-size: 32px; font-weight: 800; color: #ffcc00; }
     .small-trend { font-size: 14px; color: #32cd32; font-weight: bold; }
@@ -29,7 +28,6 @@ st.markdown("""
         border-radius: 12px;
     }
 
-    /* LOGICA MOBILE: impila le colonne */
     @media (max-width: 768px) {
         [data-testid="column"] {
             width: 100% !important;
@@ -60,7 +58,6 @@ def carica_e_elabora():
         df1 = pd.read_csv(URL_METEO)
         df2 = pd.read_csv(URL_EOLICO, skiprows=2)
 
-        # Pulizia colonne e tempo
         for df in [df1, df2]:
             df.columns = df.columns.str.strip()
             df.rename(columns={df.columns[0]: 'Tempo'}, inplace=True)
@@ -70,17 +67,14 @@ def carica_e_elabora():
                 dayfirst=True,
                 errors='coerce'
             ).dt.floor('min')
-            df = df.dropna(subset=['Tempo'])
+            df.dropna(subset=['Tempo'], inplace=True)
 
-        # Merge sui timestamp
         df = pd.merge(df1, df2, on='Tempo', how='inner')
 
-        # Conversione numerica dei campi principali
         for col in ['Vento (m/s)', 'Watt', 'Temperatura', 'Pressione Locale']:
             if col in df.columns:
                 df[col] = df[col].astype(str).str.replace(',', '.').astype(float)
 
-        # Ordina per tempo
         return df.sort_values(by='Tempo')
     except Exception:
         return None
@@ -91,7 +85,7 @@ if df is not None and not df.empty:
     now = pd.Timestamp.now()
     df_oggi = df[df['Tempo'].dt.date == now.date()]
 
-    # 1. METEO
+    # --- METEO OGGI ---
     st.subheader("🌡️ Meteo Oggi: Analisi")
     if not df_oggi.empty:
         c1, c2, c3 = st.columns(3)
@@ -116,18 +110,15 @@ if df is not None and not df.empty:
     else:
         st.info("Nessun dato meteo per oggi nei fogli Google.")
 
-    # 2. PRODUZIONE ED ECONOMIA (Calcolo Reale in kWh)
+    # --- PRODUZIONE ED ECONOMIA ---
     st.subheader("🔋 Produzione ed Economia (Stima GSE)")
 
-    # Filtro temporale rigoroso
     mask_sett = (df['Tempo'] >= (now - pd.Timedelta(days=7)))
     mask_mese = (df['Tempo'] >= (now - pd.Timedelta(days=30)))
 
-    # Energia (kWh) con campionamento fisso a 1 minuto
     e_sett = df.loc[mask_sett, 'Watt'].sum() * DELTA_ORE / 1000.0
     e_mese = df.loc[mask_mese, 'Watt'].sum() * DELTA_ORE / 1000.0
 
-    # Calcolo Annuale basato sulla media giornaliera reale
     giorni_totali = (df['Tempo'].max() - df['Tempo'].min()).days
     if giorni_totali > 0:
         energia_tot = df['Watt'].sum() * DELTA_ORE / 1000.0
@@ -157,10 +148,44 @@ if df is not None and not df.empty:
 
     st.markdown("---")
 
-    # 3. SIMULATORE E TENDENZA
+    # --- STORICO GIORNALIERO (ESTRATTO CONTO) ---
+    st.subheader("📅 Storico Giornaliero Energia / €")
+
+    df_energy = df.copy()
+    df_energy['Giorno'] = df_energy['Tempo'].dt.date
+    # Energia kWh per giorno
+    daily = (
+        df_energy
+        .groupby('Giorno', as_index=False)
+        .agg(kWh_giorno=('Watt', lambda x: x.sum() * DELTA_ORE / 1000.0))
+    )
+    daily['Euro_giorno'] = daily['kWh_giorno'] * PREZZO_GSE_KW
+
+    # Ordina dal più recente
+    daily = daily.sort_values('Giorno', ascending=False)
+
+    # Mostra tabella
+    st.dataframe(
+        daily.style.format({
+            'kWh_giorno': '{:.2f}',
+            'Euro_giorno': '{:.2f}'
+        }),
+        use_container_width=True
+    )
+
+    # Totali sul periodo visualizzato
+    tot_kwh = daily['kWh_giorno'].sum()
+    tot_euro = daily['Euro_giorno'].sum()
+    st.markdown(
+        f"Totale periodo: **{tot_kwh:.2f} kWh** · € {tot_euro:.2f}"
+    )
+
+    st.markdown("---")
+
+    # --- SIMULATORE E TENDENZA ---
     col_pred, col_meteo = st.columns(2)
 
-    # Simulatore produzione (regressione lineare Vento -> Watt)
+    # Simulatore produzione
     with col_pred:
         st.markdown('<div class="card"><h4>🔮 Simulatore Produzione</h4>', unsafe_allow_html=True)
         valid = df[['Vento (m/s)', 'Watt']].dropna()
@@ -177,7 +202,7 @@ if df is not None and not df.empty:
             unsafe_allow_html=True
         )
 
-    # Tendenza barometrica (variazione su ~3 ore)
+    # Tendenza barometrica
     with col_meteo:
         st.markdown('<div class="card"><h4>🌦️ Tendenza Barometrica</h4>', unsafe_allow_html=True)
         ultimo_tempo = df['Tempo'].iloc[-1]
@@ -202,7 +227,7 @@ if df is not None and not df.empty:
         else:
             st.info("Stato: Stabile")
 
-    # 4. GRAFICO (Ottimizzato)
+    # --- GRAFICO VENTO vs WATT OGGI ---
     st.subheader("📊 Analisi Vento vs Watt (Oggi)")
     if not df_oggi.empty:
         fig = make_subplots(specs=[[{"secondary_y": True}]])
