@@ -113,33 +113,57 @@ if df is not None and not df.empty:
     # --- PRODUZIONE ED ECONOMIA ---
     st.subheader("🔋 Produzione ed Economia (Stima GSE)")
 
-    mask_sett = (df['Tempo'] >= (now - pd.Timedelta(days=7)))
-    mask_mese = (df['Tempo'] >= (now - pd.Timedelta(days=30)))
+    # Intervalli basati sull'ultimo dato disponibile nei fogli Google
+    end_time = df['Tempo'].max()
+    start_sett = end_time - pd.Timedelta(days=7)
+    start_mese = end_time - pd.Timedelta(days=30)
+
+    mask_sett = (df['Tempo'] >= start_sett) & (df['Tempo'] <= end_time)
+    mask_mese = (df['Tempo'] >= start_mese) & (df['Tempo'] <= end_time)
 
     e_sett = df.loc[mask_sett, 'Watt'].sum() * DELTA_ORE / 1000.0
     e_mese = df.loc[mask_mese, 'Watt'].sum() * DELTA_ORE / 1000.0
 
+    # Stima annuale dalla media giornaliera
     giorni_totali = (df['Tempo'].max() - df['Tempo'].min()).days
     if giorni_totali > 0:
         energia_tot = df['Watt'].sum() * DELTA_ORE / 1000.0
-        media_giornaliera = energia_tot / giorni_totali
+        media_giornaliera = energia_tot / max(giorni_totali, 1)
         e_anno = media_giornaliera * 365
     else:
         e_anno = e_mese * 12
 
+    # Date Da / A per settimana e mese (dai dati reali)
+    if mask_sett.any():
+        data_sett_da = df.loc[mask_sett, 'Tempo'].min().date()
+        data_sett_a = df.loc[mask_sett, 'Tempo'].max().date()
+        intervallo_sett = f"Da {data_sett_da} a {data_sett_a}"
+    else:
+        intervallo_sett = "Intervallo non disponibile"
+
+    if mask_mese.any():
+        data_mese_da = df.loc[mask_mese, 'Tempo'].min().date()
+        data_mese_a = df.loc[mask_mese, 'Tempo'].max().date()
+        intervallo_mese = f"Da {data_mese_da} a {data_mese_a}"
+    else:
+        intervallo_mese = "Intervallo non disponibile"
+
     ee1, ee2, ee3 = st.columns(3)
+
     ee1.markdown(
         f'<div class="big-metric">Energia Settimanale</div>'
         f'<div class="big-value">{e_sett:.1f} kWh</div>'
-        f'<div class="small-trend">↑ € {e_sett * PREZZO_GSE_KW:.2f}</div>',
+        f'<div class="small-trend">{intervallo_sett} · € {e_sett * PREZZO_GSE_KW:.2f}</div>',
         unsafe_allow_html=True
     )
+
     ee2.markdown(
         f'<div class="big-metric">Energia Mensile</div>'
         f'<div class="big-value">{e_mese:.1f} kWh</div>'
-        f'<div class="small-trend">↑ € {e_mese * PREZZO_GSE_KW:.2f}</div>',
+        f'<div class="small-trend">{intervallo_mese} · € {e_mese * PREZZO_GSE_KW:.2f}</div>',
         unsafe_allow_html=True
     )
+
     ee3.markdown(
         f'<div class="big-metric">Stima Annuale</div>'
         f'<div class="big-value">{e_anno:.1f} kWh</div>',
@@ -153,18 +177,15 @@ if df is not None and not df.empty:
 
     df_energy = df.copy()
     df_energy['Giorno'] = df_energy['Tempo'].dt.date
-    # Energia kWh per giorno
+
     daily = (
         df_energy
         .groupby('Giorno', as_index=False)
         .agg(kWh_giorno=('Watt', lambda x: x.sum() * DELTA_ORE / 1000.0))
     )
     daily['Euro_giorno'] = daily['kWh_giorno'] * PREZZO_GSE_KW
-
-    # Ordina dal più recente
     daily = daily.sort_values('Giorno', ascending=False)
 
-    # Mostra tabella
     st.dataframe(
         daily.style.format({
             'kWh_giorno': '{:.2f}',
@@ -173,11 +194,10 @@ if df is not None and not df.empty:
         use_container_width=True
     )
 
-    # Totali sul periodo visualizzato
     tot_kwh = daily['kWh_giorno'].sum()
     tot_euro = daily['Euro_giorno'].sum()
     st.markdown(
-        f"Totale periodo: **{tot_kwh:.2f} kWh** · € {tot_euro:.2f}"
+        f"Totale periodo registrato: **{tot_kwh:.2f} kWh** · € {tot_euro:.2f}"
     )
 
     st.markdown("---")
@@ -185,7 +205,6 @@ if df is not None and not df.empty:
     # --- SIMULATORE E TENDENZA ---
     col_pred, col_meteo = st.columns(2)
 
-    # Simulatore produzione
     with col_pred:
         st.markdown('<div class="card"><h4>🔮 Simulatore Produzione</h4>', unsafe_allow_html=True)
         valid = df[['Vento (m/s)', 'Watt']].dropna()
@@ -202,7 +221,6 @@ if df is not None and not df.empty:
             unsafe_allow_html=True
         )
 
-    # Tendenza barometrica
     with col_meteo:
         st.markdown('<div class="card"><h4>🌦️ Tendenza Barometrica</h4>', unsafe_allow_html=True)
         ultimo_tempo = df['Tempo'].iloc[-1]
