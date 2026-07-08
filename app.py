@@ -82,8 +82,8 @@ def carica_e_elabora():
 df = carica_e_elabora()
 
 if df is not None and not df.empty:
-    # --- DEBUG PANEL PER VERIFICARE I DATI ---
-    with st.expander("🛠️ Debug Dati (Verifica Storico)"):
+    # --- DEBUG PANEL PER VERIFICARE LO STORICO ---
+    with st.expander("🛠️ Debug Dati (Verifica Storico)", expanded=False):
         st.write(f"Data primo dato registrato: {df['Tempo'].min()}")
         st.write(f"Data ultimo dato registrato: {df['Tempo'].max()}")
         st.write(f"Numero totale righe: {len(df)}")
@@ -129,14 +129,19 @@ if df is not None and not df.empty:
     e_sett = df.loc[mask_sett, 'Watt'].sum() * DELTA_ORE / 1000.0
     e_mese = df.loc[mask_mese, 'Watt'].sum() * DELTA_ORE / 1000.0
 
-    giorni_totali = (df['Tempo'].max() - df['Tempo'].min()).days
-    if giorni_totali > 0:
-        energia_tot = df['Watt'].sum() * DELTA_ORE / 1000.0
-        media_giornaliera = energia_tot / max(giorni_totali, 1)
-        e_anno = media_giornaliera * 365
-    else:
-        e_anno = e_mese * 12
+    # --- STIMA ANNUA (PROIEZIONE SU DATI ATTUALI) ---
+    # Energia totale registrata e giorni coperti
+    energia_tot = df['Watt'].sum() * DELTA_ORE / 1000.0
+    giorni_totali = max((df['Tempo'].max() - df['Tempo'].min()).days, 1)
 
+    media_giornaliera = energia_tot / giorni_totali
+    stima_annua_media = media_giornaliera * 365.0
+
+    # Proiezioni da settimana e da mese (se i dati lo permettono)
+    stima_annua_da_sett = e_sett * (365.0 / 7.0) if mask_sett.any() else None
+    stima_annua_da_mese = e_mese * (365.0 / 30.0) if mask_mese.any() else None
+
+    # Intervalli Da / A per settimana e mese
     if mask_sett.any():
         data_sett_da = df.loc[mask_sett, 'Tempo'].min().date()
         data_sett_a = df.loc[mask_sett, 'Tempo'].max().date()
@@ -153,6 +158,7 @@ if df is not None and not df.empty:
 
     ee1, ee2, ee3 = st.columns(3)
 
+    # Energia Settimanale
     ee1.markdown(
         f'<div class="big-metric">Energia Settimanale</div>'
         f'<div class="big-value">{e_sett:.1f} kWh</div>'
@@ -160,6 +166,7 @@ if df is not None and not df.empty:
         unsafe_allow_html=True
     )
 
+    # Energia Mensile
     ee2.markdown(
         f'<div class="big-metric">Energia Mensile</div>'
         f'<div class="big-value">{e_mese:.1f} kWh</div>'
@@ -167,11 +174,34 @@ if df is not None and not df.empty:
         unsafe_allow_html=True
     )
 
+    # Stima annua principale (proiezione su dati attuali)
     ee3.markdown(
-        f'<div class="big-metric">Stima Annuale</div>'
-        f'<div class="big-value">{e_anno:.1f} kWh</div>',
+        f'<div class="big-metric">Stima annua (proiezione)</div>'
+        f'<div class="big-value">{stima_annua_media:.1f} kWh</div>'
+        f'<div class="small-trend">Basata su {giorni_totali} giorni di storico</div>',
         unsafe_allow_html=True
     )
+
+    # Dettaglio stima annua in expander
+    with st.expander("🔍 Dettaglio stima annua (teorica)", expanded=False):
+        st.markdown(
+            f"- Media giornaliera attuale: **{media_giornaliera:.2f} kWh/giorno**"
+        )
+        st.markdown(
+            f"- Proiezione annua da storico complessivo: **{stima_annua_media:.1f} kWh**"
+        )
+        if stima_annua_da_sett is not None:
+            st.markdown(
+                f"- Proiezione annua da ultima settimana: ~{stima_annua_da_sett:.1f} kWh"
+            )
+        if stima_annua_da_mese is not None:
+            st.markdown(
+                f"- Proiezione annua da ultimo mese: ~{stima_annua_da_mese:.1f} kWh"
+            )
+        st.info(
+            "Valori indicativi: la produzione reale dipende da stagionalità, vento e condizioni "
+            "non modellate (non sono dati ufficiali GSE)."
+        )
 
     st.markdown("---")
 
