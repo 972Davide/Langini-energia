@@ -82,6 +82,12 @@ def carica_e_elabora():
 df = carica_e_elabora()
 
 if df is not None and not df.empty:
+    # --- DEBUG PANEL PER VERIFICARE I DATI ---
+    with st.expander("🛠️ Debug Dati (Verifica Storico)"):
+        st.write(f"Data primo dato registrato: {df['Tempo'].min()}")
+        st.write(f"Data ultimo dato registrato: {df['Tempo'].max()}")
+        st.write(f"Numero totale righe: {len(df)}")
+
     now = pd.Timestamp.now()
     df_oggi = df[df['Tempo'].dt.date == now.date()]
 
@@ -113,7 +119,6 @@ if df is not None and not df.empty:
     # --- PRODUZIONE ED ECONOMIA ---
     st.subheader("🔋 Produzione ed Economia (Stima GSE)")
 
-    # Intervalli basati sull'ultimo dato disponibile nei fogli Google
     end_time = df['Tempo'].max()
     start_sett = end_time - pd.Timedelta(days=7)
     start_mese = end_time - pd.Timedelta(days=30)
@@ -124,7 +129,6 @@ if df is not None and not df.empty:
     e_sett = df.loc[mask_sett, 'Watt'].sum() * DELTA_ORE / 1000.0
     e_mese = df.loc[mask_mese, 'Watt'].sum() * DELTA_ORE / 1000.0
 
-    # Stima annuale dalla media giornaliera
     giorni_totali = (df['Tempo'].max() - df['Tempo'].min()).days
     if giorni_totali > 0:
         energia_tot = df['Watt'].sum() * DELTA_ORE / 1000.0
@@ -133,7 +137,6 @@ if df is not None and not df.empty:
     else:
         e_anno = e_mese * 12
 
-    # Date Da / A per settimana e mese (dai dati reali)
     if mask_sett.any():
         data_sett_da = df.loc[mask_sett, 'Tempo'].min().date()
         data_sett_a = df.loc[mask_sett, 'Tempo'].max().date()
@@ -172,7 +175,7 @@ if df is not None and not df.empty:
 
     st.markdown("---")
 
-    # --- STORICO GIORNALIERO (ESTRATTO CONTO) ---
+    # --- STORICO GIORNALIERO ---
     st.subheader("📅 Storico Giornaliero Energia / €")
 
     df_energy = df.copy()
