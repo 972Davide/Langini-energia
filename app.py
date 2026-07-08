@@ -14,7 +14,7 @@ DELTA_ORE = 1.0 / 60.0
 
 st.set_page_config(page_title="Langini: Intelligenza Energetica", layout="wide")
 
-# --- CSS DEFINITIVO ---
+# --- CSS ---
 st.markdown("""
     <style>
     .big-metric { font-size: 16px; color: #b0c4de; text-transform: uppercase; }
@@ -58,24 +58,21 @@ df = carica_e_elabora()
 if df is not None and not df.empty:
     now = pd.Timestamp.now()
     
-    # --- CALCOLI ENERGETICI DINAMICI ---
-    # 1. Storico 2026
+    # --- CALCOLI ENERGETICI ---
     df_2026 = df[df['Tempo'].dt.year == 2026]
     energia_anno_corrente = df_2026['Watt'].sum() * DELTA_ORE / 1000.0
     giorno_inizio_anno = pd.Timestamp(year=2026, month=1, day=1)
     giorni_passati = max((now - giorno_inizio_anno).days, 1)
     media_giornaliera_storica = energia_anno_corrente / giorni_passati
     
-    # 2. Proiezione a finire
     fine_anno = pd.Timestamp(year=2026, month=12, day=31)
     giorni_rimanenti = max((fine_anno - now).days, 0)
     stima_annua_finire = energia_anno_corrente + (media_giornaliera_storica * giorni_rimanenti)
     
-    # 3. Settimanale e Mensile
     e_sett = df[df['Tempo'] >= (now - pd.Timedelta(days=7))]['Watt'].sum() * DELTA_ORE / 1000.0
     e_mese = df[df['Tempo'] >= (now - pd.Timedelta(days=30))]['Watt'].sum() * DELTA_ORE / 1000.0
 
-    # --- UI PRODUZIONE ---
+    # --- UI ---
     st.subheader("🔋 Produzione ed Economia")
     ee1, ee2, ee3 = st.columns(3)
     
@@ -85,7 +82,6 @@ if df is not None and not df.empty:
 
     st.markdown("---")
     
-    # --- SIMULATORE E METEO ---
     col1, col2 = st.columns(2)
     with col1:
         st.markdown('<div class="card"><h4>🔮 Simulatore Produzione</h4>', unsafe_allow_html=True)
@@ -102,7 +98,6 @@ if df is not None and not df.empty:
         elif var < -0.5: st.error("Stato: Instabilità in arrivo")
         else: st.info("Stato: Stabile")
 
-    # --- GRAFICO ---
     st.subheader("📊 Analisi Vento vs Watt (Oggi)")
     df_oggi = df[df['Tempo'].dt.date == now.date()]
     if not df_oggi.empty:
@@ -111,6 +106,5 @@ if df is not None and not df.empty:
         fig.add_trace(go.Scatter(x=df_oggi['Tempo'], y=df_oggi['Watt'], name="Watt", line=dict(color='#FFD700', width=3)), secondary_y=True)
         fig.update_layout(template="plotly_dark", height=450, margin=dict(l=20, r=20, t=30, b=20), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
         st.plotly_chart(fig, use_container_width=True)
-
 else:
     st.warning("Dati non disponibili.")
