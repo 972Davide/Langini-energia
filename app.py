@@ -58,6 +58,7 @@ def carica_e_elabora():
         df1 = pd.read_csv(URL_METEO)
         df2 = pd.read_csv(URL_EOLICO, skiprows=2)
 
+        # Normalizza colonne e tempo
         for df in [df1, df2]:
             df.columns = df.columns.str.strip()
             df.rename(columns={df.columns[0]: 'Tempo'}, inplace=True)
@@ -69,8 +70,10 @@ def carica_e_elabora():
             ).dt.floor('min')
             df.dropna(subset=['Tempo'], inplace=True)
 
+        # Merge sui timestamp
         df = pd.merge(df1, df2, on='Tempo', how='inner')
 
+        # Conversioni numeriche
         for col in ['Vento (m/s)', 'Watt', 'Temperatura', 'Pressione Locale']:
             if col in df.columns:
                 df[col] = df[col].astype(str).str.replace(',', '.').astype(float)
@@ -119,6 +122,7 @@ if df is not None and not df.empty:
     # --- PRODUZIONE ED ECONOMIA ---
     st.subheader("🔋 Produzione ed Economia (Stima GSE)")
 
+    # Intervalli per settimana/mese basati sull'ultimo dato
     end_time = df['Tempo'].max()
     start_sett = end_time - pd.Timedelta(days=7)
     start_mese = end_time - pd.Timedelta(days=30)
@@ -126,22 +130,22 @@ if df is not None and not df.empty:
     mask_sett = (df['Tempo'] >= start_sett) & (df['Tempo'] <= end_time)
     mask_mese = (df['Tempo'] >= start_mese) & (df['Tempo'] <= end_time)
 
+    # Energia settimanale/mensile (kWh) con campionamento 1 min
     e_sett = df.loc[mask_sett, 'Watt'].sum() * DELTA_ORE / 1000.0
     e_mese = df.loc[mask_mese, 'Watt'].sum() * DELTA_ORE / 1000.0
 
     # --- STIMA ANNUA (PROIEZIONE SU DATI ATTUALI) ---
-    # Energia totale registrata e giorni coperti
     energia_tot = df['Watt'].sum() * DELTA_ORE / 1000.0
     giorni_totali = max((df['Tempo'].max() - df['Tempo'].min()).days, 1)
 
     media_giornaliera = energia_tot / giorni_totali
     stima_annua_media = media_giornaliera * 365.0
 
-    # Proiezioni da settimana e da mese (se i dati lo permettono)
+    # Proiezioni da settimana / mese
     stima_annua_da_sett = e_sett * (365.0 / 7.0) if mask_sett.any() else None
     stima_annua_da_mese = e_mese * (365.0 / 30.0) if mask_mese.any() else None
 
-    # Intervalli Da / A per settimana e mese
+    # Intervalli Da / A
     if mask_sett.any():
         data_sett_da = df.loc[mask_sett, 'Tempo'].min().date()
         data_sett_a = df.loc[mask_sett, 'Tempo'].max().date()
@@ -182,7 +186,7 @@ if df is not None and not df.empty:
         unsafe_allow_html=True
     )
 
-    # Dettaglio stima annua in expander
+    # PANNELLO DI DETTAGLIO STIMA ANNUA
     with st.expander("🔍 Dettaglio stima annua (teorica)", expanded=False):
         st.markdown(
             f"- Media giornaliera attuale: **{media_giornaliera:.2f} kWh/giorno**"
