@@ -58,7 +58,8 @@ df = carica_e_elabora()
 
 if df is not None and not df.empty:
     now = pd.Timestamp.now()
-    df_oggi = df[df['Tempo'].dt.date == now.date()]
+    #df_oggi = df[df['Tempo'].dt.date == now.date()]
+    df_oggi = df[df['Tempo'] >= (now - pd.Timedelta(hours=24))]
     
     # 1. Metriche Meteo
     st.subheader("🌡️ Meteo Oggi: Analisi")
