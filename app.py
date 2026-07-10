@@ -68,7 +68,14 @@ if df is not None and not df.empty:
     fig = make_subplots(specs=[[{"secondary_y": True}]])
 
     df_plot = df.tail(50)
-    fig.add_trace(go.Bar(x=df_plot['Tempo'], y=df_plot['Vento (m/s)'], name="Vento", marker_color='rgba(135, 206, 235, 0.6)"), secondary_y=False)
+    fig.add_trace(
+    go.Bar(
+      x=df_plot['Tempo'],
+      y=df_plot['Vento (m/s)'],
+      name="Vento",
+      marker_color='rgba(135, 206, 235, 0.6)'
+      ),
+      secondary_y=False)
     fig.add_trace(go.Scatter(x=df_plot['Tempo'], y=df_plot['Watt'], name="Watt", line=dict(color='#FFD700', width=3)), secondary_y=True)
 
     fig.update_layout(template="plotly_dark", margin=dict(l=20, r=20, t=30, b=20))
