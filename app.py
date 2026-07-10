@@ -14,20 +14,30 @@ st.set_page_config(page_title="Langini: Intelligenza Energetica", layout="wide")
 @st.cache_data(ttl=600)
 def carica_e_elabora():
     try:
-        # Carica separatamente
+        # Carica
         df1 = pd.read_csv(URL_METEO, on_bad_lines='skip').tail(5000)
         df2 = pd.read_csv(URL_EOLICO, skiprows=2, on_bad_lines='skip').tail(5000)
         
-        # Pulisci entrambi
-        for df in [df1, df2]:
-            df.columns = df.columns.str.strip()
-            df.rename(columns={df.columns[0]: 'Tempo'}, inplace=True)
-            df['Tempo'] = pd.to_datetime(df['Tempo'], format='mixed', errors='coerce')
-            df.dropna(subset=['Tempo'], inplace=True)
+        # Pulizia colonna Data/Ora
+        # Formato Meteo: 10/07/2026 19.26.05 -> sostituiamo punti con due punti
+        df1.rename(columns={df1.columns[0]: 'Tempo'}, inplace=True)
+        df1['Tempo'] = pd.to_datetime(df1['Tempo'].str.replace('.', ':'), dayfirst=True)
         
-        # Invece di fare il merge, usiamo il Meteo come base 
-        # e cerchiamo di aggiungere l'Eolico se la data corrisponde
-        df = pd.merge(df1, df2, on='Tempo', how='outer') 
+        # Formato Eolico
+        df2.rename(columns={df2.columns[0]: 'Tempo'}, inplace=True)
+        df2['Tempo'] = pd.to_datetime(df2['Tempo'], dayfirst=True)
+        
+        # Arrotondiamo al MINUTO per permettere l'unione
+        df1['Tempo'] = df1['Tempo'].dt.floor('min')
+        df2['Tempo'] = df2['Tempo'].dt.floor('min')
+        
+        # Merge basato sul minuto
+        df = pd.merge(df1, df2, on='Tempo', how='inner')
+        
+        # Conversione numeri (gestione virgola/punto)
+        for col in ['Temperatura', 'Vento (m/s)', 'Watt']:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '.'), errors='coerce')
         
         return df.sort_values(by='Tempo')
     except Exception as e:
