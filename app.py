@@ -14,31 +14,28 @@ st.set_page_config(page_title="Langini: Intelligenza Energetica", layout="wide")
 @st.cache_data(ttl=600)
 def carica_e_elabora():
     try:
-        # Leggiamo gli ultimi dati ignorando eventuali errori di riga
-        df1 = pd.read_csv(URL_METEO, on_bad_lines='skip').tail(5000)
-        df2 = pd.read_csv(URL_EOLICO, skiprows=2, on_bad_lines='skip').tail(5000)
+        # Leggiamo i dati
+        df1 = pd.read_csv(URL_METEO).tail(100)
+        df2 = pd.read_csv(URL_EOLICO, skiprows=2).tail(100)
         
+        # DEBUG: Stampiamo le colonne per vedere se sono giuste
+        st.write("Colonne Meteo:", df1.columns.tolist())
+        st.write("Colonne Eolico:", df2.columns.tolist())
+        
+        # Procediamo come prima
         for df in [df1, df2]:
             df.columns = df.columns.str.strip()
             df.rename(columns={df.columns[0]: 'Tempo'}, inplace=True)
-            # Pulizia radicale della data
             df['Tempo'] = pd.to_datetime(df['Tempo'], format='mixed', errors='coerce')
         
-        # Unione sicura
         df = pd.merge(df1, df2, on='Tempo', how='inner')
         
-        # Conversione forzata in numeri (se non è un numero, diventa NaN)
-        cols_num = ['Vento (m/s)', 'Watt', 'Temperatura', 'Pressione Locale']
-        for col in cols_num:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '.'), errors='coerce')
+        # DEBUG: Vediamo se dopo il merge il file è vuoto
+        st.write("Righe dopo il merge:", len(df))
         
-        # FILTRO DI SICUREZZA (rimuove valori folli)
-        df.loc[(df['Temperatura'] < -20) | (df['Temperatura'] > 60), 'Temperatura'] = np.nan
-        df.loc[(df['Watt'] < 0) | (df['Watt'] > 15000), 'Watt'] = np.nan
-        
-        return df.dropna(subset=['Tempo', 'Watt']).sort_values(by='Tempo')
+        return df.sort_values(by='Tempo')
     except Exception as e:
+        st.error(f"Errore tecnico: {e}")
         return None
 
 # --- INTERFACCIA ---
