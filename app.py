@@ -14,32 +14,34 @@ st.set_page_config(page_title="Langini: Intelligenza Energetica", layout="wide")
 @st.cache_data(ttl=300)
 def carica_dati():
     try:
-        # Carica i dati ignorando le righe corrotte
-        df1 = pd.read_csv(URL_METEO, on_bad_lines="skip")
-        df2 = pd.read_csv(URL_EOLICO, skiprows=2, on_bad_lines="skip")
+        # Aggiunto low_memory=False per eliminare il DtypeWarning
+        df1 = pd.read_csv(URL_METEO, on_bad_lines="skip", low_memory=False)
+        df2 = pd.read_csv(URL_EOLICO, skiprows=2, on_bad_lines="skip", low_memory=False)
 
-        # 1. Pulisce i nomi delle colonne (rimuove spazi vuoti a inizio/fine)
         df1.columns = df1.columns.str.strip()
         df2.columns = df2.columns.str.strip()
 
-        # 2. Identifica il tempo usando la posizione (la colonna 0)
         df1.rename(columns={df1.columns[0]: "Tempo"}, inplace=True)
         df2.rename(columns={df2.columns[0]: "Tempo"}, inplace=True)
 
-        # 3. Conversione date robusta
-        df1["Tempo"] = pd.to_datetime(df1["Tempo"], dayfirst=True, errors="coerce")
-        df2["Tempo"] = pd.to_datetime(df2["Tempo"], dayfirst=True, errors="coerce")
+        # Specifichiamo il formato data per eliminare il UserWarning
+        # Supponendo che il formato sia Giorno/Mese/Anno (es. 11/07/2026)
+        df1["Tempo"] = pd.to_datetime(df1["Tempo"], dayfirst=True, format='mixed', errors="coerce")
+        df2["Tempo"] = pd.to_datetime(df2["Tempo"], dayfirst=True, format='mixed', errors="coerce")
 
-        # 4. Merge flessibile
-        df = pd.merge(df1.dropna(subset=["Tempo"]), df2.dropna(subset=["Tempo"]), on="Tempo", how="inner")
+        df1 = df1.dropna(subset=["Tempo"])
+        df2 = df2.dropna(subset=["Tempo"])
 
-        # 5. Pulizia numerica: forza la conversione di TUTTE le colonne (eccetto Tempo) in numeri
+        df = pd.merge(df1, df2, on="Tempo", how="inner")
+        
+        # Pulizia forzata: trasforma tutte le colonne (tranne Tempo) in numeriche
         for col in df.columns:
             if col != "Tempo":
-                df[col] = pd.to_numeric(df[col].astype(str).str.replace(",", "."), errors="coerce")
+                df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '.'), errors="coerce")
 
         return df.sort_values("Tempo")
     except Exception as e:
+        st.error(f"Errore caricamento: {e}")
         return None
 
 # --- INTERFACCIA ---
