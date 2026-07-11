@@ -14,34 +14,26 @@ st.set_page_config(page_title="Langini: Intelligenza Energetica", layout="wide")
 @st.cache_data(ttl=300)
 def carica_dati():
     try:
-        # Caricamento con gestione errori per righe malformate
         df1 = pd.read_csv(URL_METEO, on_bad_lines='skip')
         df2 = pd.read_csv(URL_EOLICO, skiprows=2, on_bad_lines='skip')
         
-        # Pulizia nomi colonne (rimuove spazi invisibili)
+        # Pulisce gli spazi bianchi dai nomi delle colonne automaticamente
         df1.columns = df1.columns.str.strip()
         df2.columns = df2.columns.str.strip()
         
-        # Rinominiamo le colonne chiave per il merge
-        # Nel Meteo la colonna è 'Data/Ora', nell'eolico è la prima
-        df1.rename(columns={'Data/Ora': 'Tempo'}, inplace=True)
+        # Invece di cercare il nome esatto, usiamo la posizione (la prima colonna è sempre il tempo)
+        df1.rename(columns={df1.columns[0]: 'Tempo'}, inplace=True)
         df2.rename(columns={df2.columns[0]: 'Tempo'}, inplace=True)
         
-        # Conversione date forzata
+        # Conversione date
         df1['Tempo'] = pd.to_datetime(df1['Tempo'], dayfirst=True, errors='coerce')
         df2['Tempo'] = pd.to_datetime(df2['Tempo'], dayfirst=True, errors='coerce')
         
-        # Unione dei dati
-        df = pd.merge(df1.dropna(subset=['Tempo']), df2.dropna(subset=['Tempo']), on='Tempo', how='inner')
-        
-        # Pulizia colonne numeriche: rimuove virgole e converte in numeri
-        cols_target = ['Vento (m/s)', 'Watt', 'Temperatura', 'Pressione Mare', 'Umidità']
-        for col in cols_target:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '.'), errors='coerce')
-        
-        return df.sort_values(by='Tempo')
+        # Merge
+        df = pd.merge(df1, df2, on='Tempo', how='inner')
+        return df
     except Exception as e:
+        st.error(f"Errore tecnico: {e}")
         return None
 
 # --- APP ---
