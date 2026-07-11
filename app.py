@@ -19,37 +19,41 @@ st.set_page_config(page_title="Langini: Intelligenza Energetica", layout="wide")
 @st.cache_data(ttl=300)
 def carica_dati_finale():
     try:
-        # Leggiamo SENZA skiprows, forzando la pulizia dopo
-        df1 = pd.read_csv(URL_METEO, on_bad_lines="skip")
-        df2 = pd.read_csv(URL_EOLICO, on_bad_lines="skip")
+        # Leggiamo i CSV forzando pandas a gestire meglio le intestazioni
+        df1 = pd.read_csv(URL_METEO, header=0, on_bad_lines="skip")
+        df2 = pd.read_csv(URL_EOLICO, header=0, on_bad_lines="skip")
         
-        # Pulisce eventuali spazi nei nomi colonne
+        # Pulizia nomi colonne
         df1.columns = df1.columns.str.strip()
         df2.columns = df2.columns.str.strip()
+
+        # Identifichiamo la colonna "Data" cercando la stringa nei nomi
+        # Questo evita di usare indici numerici che possono sbagliare
+        col_tempo1 = [c for c in df1.columns if 'Data' in c or 'Tempo' in c][0]
+        col_tempo2 = [c for c in df2.columns if 'Data' in c or 'Tempo' in c][0]
         
-        # Identifica la colonna tempo (spesso è la prima, a prescindere dal nome)
-        df1.rename(columns={df1.columns[0]: "Tempo"}, inplace=True)
-        df2.rename(columns={df2.columns[0]: "Tempo"}, inplace=True)
-        
-        # Rimuove le righe che non sono date (che contengono intestazioni ripetute)
-        df1 = df1[df1["Tempo"].str.contains(r'\d{2}/\d{2}/\d{4}', na=False)]
-        df2 = df2.columns[0] # (Solo logica interna di pulizia)
-        
-        # Conversione sicura
+        df1.rename(columns={col_tempo1: "Tempo"}, inplace=True)
+        df2.rename(columns={col_tempo2: "Tempo"}, inplace=True)
+
+        # Conversione date
         df1["Tempo"] = pd.to_datetime(df1["Tempo"], dayfirst=True, format='mixed', errors="coerce")
         df2["Tempo"] = pd.to_datetime(df2["Tempo"], dayfirst=True, format='mixed', errors="coerce")
-
+        
+        # Merge
         df = pd.merge(df1.dropna(subset=["Tempo"]), df2.dropna(subset=["Tempo"]), on="Tempo", how="inner")
         
-        # Pulizia numerica: forza a float, se fallisce mette NaN
+        # Conversione numerica sicura
         for col in df.columns:
             if col != "Tempo":
-                df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '.'), errors="coerce")
+                # Se la colonna contiene stringhe, le puliamo
+                if df[col].dtype == 'object':
+                    df[col] = df[col].astype(str).str.replace(',', '.').replace('nan', '0')
+                df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
         
         return df.sort_values("Tempo").tail(2500)
     except Exception as e:
-        # Qui vedremo l'errore REALE nel log di Streamlit
-        st.error(f"DEBUG ERRORE: {e}")
+        # Questo ti dirà esattamente cosa non va
+        st.error(f"DEBUG ERRORE: {str(e)}")
         return None
 
 # --- UI ---
