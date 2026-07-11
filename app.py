@@ -11,29 +11,18 @@ URL_EOLICO = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBu3iMBBiAnzESlBy
 @st.cache_data(ttl=300)
 def carica_dati():
     try:
-        # Carica senza saltare righe (header=0 prende la prima riga come nomi colonne)
-        df1 = pd.read_csv(URL_METEO, header=0, on_bad_lines="skip")
-        df2 = pd.read_csv(URL_EOLICO, header=0, on_bad_lines="skip")
+        # Leggiamo i file come testo puro per vedere se scarichiamo qualcosa
+        r1 = requests.get(URL_METEO, timeout=10)
+        r2 = requests.get(URL_EOLICO, timeout=10)
         
-        # Rinominazione forzata della prima colonna in "Tempo"
-        df1.rename(columns={df1.columns[0]: "Tempo"}, inplace=True)
-        df2.rename(columns={df2.columns[0]: "Tempo"}, inplace=True)
+        # Trasformiamo in dataframe
+        df1 = pd.read_csv(io.StringIO(r1.text), header=0, on_bad_lines="skip")
+        df2 = pd.read_csv(io.StringIO(r2.text), header=0, on_bad_lines="skip")
         
-        # Converte in date
-        df1["Tempo"] = pd.to_datetime(df1["Tempo"], dayfirst=True, errors="coerce")
-        df2["Tempo"] = pd.to_datetime(df2["Tempo"], dayfirst=True, errors="coerce")
-        
-        # Unisce i due file
-        df = pd.merge(df1.dropna(subset=["Tempo"]), df2.dropna(subset=["Tempo"]), on="Tempo", how="inner")
-        
-        # Forza i valori numerici (pulisce virgole e spazi)
-        for col in df.columns:
-            if col != "Tempo":
-                df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '.'), errors="coerce").fillna(0)
-        
-        return df.sort_values("Tempo").tail(2500)
+        # DEBUG: Ritorna il numero di righe invece del dataframe
+        return f"Meteo: {len(df1)} righe, Eolico: {len(df2)} righe"
     except Exception as e:
-        return str(e) # Restituisce l'errore come testo
+        return f"Errore: {str(e)}"
 
 # --- APP ---
 st.title("🌦️ Langini: Intelligenza Energetica")
