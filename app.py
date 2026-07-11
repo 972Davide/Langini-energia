@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from datetime import timedelta, datetime
+from datetime import timedelta
 import time
 
 # --- URL FOGLI ---
@@ -55,7 +55,7 @@ if df is not None and not df.empty:
     limite_12h = adesso - timedelta(hours=12)
     df_12h = df[df['Tempo'] >= limite_12h]
     
-    # Previsione Pressione
+    # Previsione
     limite_3h = adesso - timedelta(hours=3)
     pressione_attuale = ultima.get(col_press, 0)
     pressione_3h_fa_list = df[df['Tempo'] <= limite_3h][col_press].tail(1).values if col_press else []
@@ -65,12 +65,10 @@ if df is not None and not df.empty:
         if diff > 1.5: previsione = "Miglioramento"
         elif diff < -1.5: previsione = "Instabilità in arrivo"
     
-    # --- LOGICA PRODUZIONE ---
-    giorni_passati = (adesso - df['Tempo'].min()).days + 1
-    prod_totale = df[col_watt].sum()
-    media_giornaliera = prod_totale / giorni_passati
-    giorni_totali_anno = 365
-    proiezione_anno = media_giornaliera * giorni_totali_anno
+    # Produzioni
+    prod_giornaliera = df[df['Tempo'].dt.date == adesso.date()][col_watt].sum() if col_watt else 0
+    prod_settimanale = df[df['Tempo'] >= (adesso - timedelta(days=7))][col_watt].sum() if col_watt else 0
+    prod_mensile = df[df['Tempo'] >= (adesso - timedelta(days=30))][col_watt].sum() if col_watt else 0
     
     # --- METRICHE ---
     c1, c2, c3, c4, c5 = st.columns(5)
@@ -78,8 +76,8 @@ if df is not None and not df.empty:
     c2.metric("Umidità", f"{ultima.get(col_umid, 0):.0f} %", f"Min {df_12h[col_umid].min():.0f}% / Max {df_12h[col_umid].max():.0f}%" if col_umid else "")
     c3.metric("Vento", f"{ultima.get(col_vento, 0):.1f} m/s", f"Max 12h: {df_12h[col_vento].max():.1f} m/s" if col_vento else "")
     with c4:
-        st.metric("Produzione (Totale)", f"{prod_totale:,.0f} W")
-        st.caption(f"Proiezione a fine anno: {proiezione_anno:,.0f} W")
+        st.metric("Produzione (Oggi)", f"{prod_giornaliera:,.0f} W")
+        st.caption(f"Sett: {prod_settimanale:,.0f} W | Mese: {prod_mensile:,.0f} W")
     c5.metric("Pressione", f"{pressione_attuale:.0f} hPa", previsione)
     
     st.markdown("---")
@@ -101,12 +99,14 @@ if df is not None and not df.empty:
         fig2.update_layout(template="plotly_dark")
         st.plotly_chart(fig2, use_container_width=True)
 
-    # Countdown
+    # --- BARRA DI PROGRESSO ---
     st.caption("Prossimo aggiornamento tra:")
     bar = st.progress(0)
     for i in range(180):
         time.sleep(1)
-        bar.progress((i + 1) / 180)
+        # Calcola percentuale (1 - tempo_trascorso/totale)
+        progress = (i + 1) / 180
+        bar.progress(progress)
     st.rerun()
 
 else:
