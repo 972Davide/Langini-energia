@@ -14,35 +14,35 @@ st.set_page_config(page_title="Langini: Intelligenza Energetica", layout="wide")
 @st.cache_data(ttl=300)
 def carica_dati():
     try:
-        # Leggiamo i file come puro testo all'inizio per evitare il crash di lettura
-        # Usiamo on_bad_lines='skip' per ignorare righe malformate nel CSV
         df1 = pd.read_csv(URL_METEO, dtype=str, on_bad_lines='skip')
         df2 = pd.read_csv(URL_EOLICO, skiprows=2, dtype=str, on_bad_lines='skip')
         
-        # Pulizia nomi colonne: rimuoviamo spazi e caratteri strani
         df1.columns = df1.columns.str.strip()
         df2.columns = df2.columns.str.strip()
-        
-        # Rinominiamo la colonna temporale (assumendo sia la prima)
         df1.rename(columns={df1.columns[0]: 'Tempo'}, inplace=True)
         df2.rename(columns={df2.columns[0]: 'Tempo'}, inplace=True)
         
-        # Conversione sicura date
+        # Mappatura Testo -> Numeri
+        mappa_meteo = {'Sereno': 1, 'Nuvoloso': 2, 'Pioggia': 3} # Aggiungi altri stati se necessario
+        if 'Stato Tempo' in df1.columns:
+            df1['Stato Tempo'] = df1['Stato Tempo'].map(mappa_meteo).fillna(0)
+            
+        # Conversione date
         df1['Tempo'] = pd.to_datetime(df1['Tempo'], errors='coerce')
         df2['Tempo'] = pd.to_datetime(df2['Tempo'], errors='coerce')
         
-        # Unione
+        # Merge
         df = pd.merge(df1.dropna(subset=['Tempo']), df2.dropna(subset=['Tempo']), on='Tempo', how='inner')
         
-        # Conversione selettiva in numerico: tutto ciò che non è numero diventa NaN
-        cols_numeric = ['Vento (m/s)', 'Watt', 'Temp. Est', 'Umid. Est.']
+        # Conversione numerica sicura
+        cols_numeric = ['Vento (m/s)', 'Watt', 'Temperatura', 'Pressione Mare', 'Umidità', 'Stato Tempo']
         for col in cols_numeric:
             if col in df.columns:
-                # Sostituiamo virgole con punti prima di convertire
                 df[col] = pd.to_numeric(df[col].str.replace(',', '.'), errors='coerce')
         
         return df.sort_values(by='Tempo')
-    except Exception:
+    except Exception as e:
+        st.error(f"Errore: {e}")
         return None
 
 # --- APP ---
