@@ -1,53 +1,57 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
+import requests
+import io
 
-# Percorsi dei tuoi file CSV in locale
-FILE_METEO = "Meteo.csv"   # Assicurati che il file si chiami così e sia nella stessa cartella
-FILE_EOLICO = "Eolico.csv" # Assicurati che il file si chiami così e sia nella stessa cartella
+# URL definitivi
+URL_METEO = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQvcTq-KenrIWPKg-WK1eTEFwBu70kc-ODtKUMev9JRuZUtC2LWqkzJton8wcTOBnAIVt7KaueuQxjS/pub?gid=0&single=true&output=csv"
+URL_EOLICO = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBu3iMBBiAnzESlByyAsLX3W9xPAJB9biFQC8X4O9DEG50XWjWUnM-QRJNXga26_RrM8LWk6vgB34y/pub?gid=0&single=true&output=csv"
 
 st.set_page_config(page_title="Langini: Intelligenza Energetica", layout="wide")
-st.title("🌦️ Langini: Intelligenza Energetica (Localhost)")
+st.title("🌦️ Langini: Intelligenza Energetica")
 
-def carica_dati_locale():
+@st.cache_data(ttl=300)
+def carica_dati():
     try:
-        # Leggiamo i CSV
-        df1 = pd.read_csv(FILE_METEO)
-        df2 = pd.read_csv(FILE_EOLICO)
+        # Scarichiamo il contenuto come testo puro
+        meteo_text = requests.get(URL_METEO, timeout=10).text
+        eolico_text = requests.get(URL_EOLICO, timeout=10).text
         
-        # Pulizia nomi colonne (rimuove spazi)
+        # Trasformiamo il testo in DataFrame (tabelle)
+        df1 = pd.read_csv(io.StringIO(meteo_text))
+        df2 = pd.read_csv(io.StringIO(eolico_text))
+        
+        # Rendiamo i nomi delle colonne uniformi (rimuoviamo spazi extra)
         df1.columns = df1.columns.str.strip()
         df2.columns = df2.columns.str.strip()
         
-        # Rinominiamo la prima colonna in 'Tempo'
+        # Forza la prima colonna a chiamarsi "Tempo"
         df1.rename(columns={df1.columns[0]: "Tempo"}, inplace=True)
         df2.rename(columns={df2.columns[0]: "Tempo"}, inplace=True)
         
-        # Conversione date
-        df1["Tempo"] = pd.to_datetime(df1["Tempo"], dayfirst=True)
-        df2["Tempo"] = pd.to_datetime(df2["Tempo"], dayfirst=True)
+        # Convertiamo la colonna Tempo in formato data reale
+        df1["Tempo"] = pd.to_datetime(df1["Tempo"], dayfirst=True, errors='coerce')
+        df2["Tempo"] = pd.to_datetime(df2["Tempo"], dayfirst=True, errors='coerce')
         
-        # Unione
-        df = pd.merge(df1, df2, on="Tempo")
+        # Uniamo i due file sulla colonna Tempo
+        df = pd.merge(df1, df2, on="Tempo", how="inner")
         
-        # Pulizia numerica: sostituisce virgole con punti
+        # Convertiamo tutto il resto in numeri (gestendo le virgole)
         for col in df.columns:
             if col != "Tempo":
                 df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '.'), errors='coerce')
         
         return df
     except Exception as e:
-        st.error(f"Errore nel caricamento: {e}")
-        return None
+        return f"Errore: {e}"
 
-# Caricamento e Visualizzazione
-df = carica_dati_locale()
+# Esecuzione
+df = carica_dati()
 
-if df is not None:
-    st.success("Dati caricati correttamente in locale!")
-    st.dataframe(df.tail())
-    
-    # Grafico veloce
-    st.line_chart(df.set_index("Tempo")[["Temperatura", "Watt"]])
+if isinstance(df, str):
+    st.error(f"Qualcosa non va nel caricamento: {df}")
+elif df is not None and not df.empty:
+    st.success("Dati caricati con successo!")
+    st.line_chart(df.set_index("Tempo"))
 else:
-    st.warning("Non trovo i file CSV nella cartella. Verifica i nomi dei file!")
+    st.warning("Nessun dato caricato. Verifica che le colonne si chiamino correttamente.")
