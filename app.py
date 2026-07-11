@@ -10,7 +10,7 @@ URL_METEO = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQvcTq-KenrIWPKg-WK
 URL_EOLICO = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBu3iMBBiAnzESlByyAsLX3W9xPAJB9biFQC8X4O9DEG50XWjWUnM-QRJNXga26_RrM8LWk6vgB34y/pub?gid=0&single=true&output=csv"
 
 
-st.set_page_config(page_title="Langini: Intelligenza Energetica", layout="wide")
+st.set_page_config(page_title="Langini: Intelligenza Energetica ", layout="wide")
 
 @st.cache_data(ttl=300)
 def carica_e_unisci():
