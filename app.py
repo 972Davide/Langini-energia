@@ -17,24 +17,14 @@ def carica_e_unisci():
         df1 = pd.read_csv(URL_METEO)
         df2 = pd.read_csv(URL_EOLICO, skiprows=2)
         
-        df1 = df1.loc[:, ~df1.columns.str.contains('^Unnamed')]
-        df2 = df2.loc[:, ~df2.columns.str.contains('^Unnamed')]
-        df1.rename(columns={df1.columns[0]: 'Tempo'}, inplace=True)
-        df2.rename(columns={df2.columns[0]: 'Tempo'}, inplace=True)
+        # DEBUG: Stampiamo le colonne trovate per vedere se il merge ha senso
+        st.write("Colonne Meteo:", df1.columns.tolist())
+        st.write("Colonne Eolico:", df2.columns.tolist())
         
-        for df in [df1, df2]:
-            df['Tempo'] = pd.to_datetime(df['Tempo'].astype(str).str.replace('.', ':', regex=False), format='mixed', dayfirst=True).dt.floor('min')
-        
-        df = pd.merge(df1, df2, on='Tempo', how='inner')
-        
-        colonne_da_convertire = ['Vento (m/s)', 'Watt', 'Temperatura', 'Pressione Mare', 'Umidità', 'Umidita']
-        for col in colonne_da_convertire:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '.'), errors='coerce')
-        
-        return df.sort_values(by='Tempo')
+        # ... resto del tuo codice ...
+        return df
     except Exception as e:
-        st.error(f"Errore caricamento dati: {e}")
+        st.error(f"Errore specifico: {e}")
         return None
 
 # --- INTERFACCIA ---
