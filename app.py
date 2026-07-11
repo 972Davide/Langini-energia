@@ -14,55 +14,54 @@ st.set_page_config(page_title="Langini: Intelligenza Energetica", layout="wide")
 @st.cache_data(ttl=300)
 def carica_dati():
     try:
-        # Caricamento robusto
+        # Caricamento con gestione errori per righe malformate
         df1 = pd.read_csv(URL_METEO, on_bad_lines='skip')
         df2 = pd.read_csv(URL_EOLICO, skiprows=2, on_bad_lines='skip')
         
-        # Pulizia intestazioni
+        # Pulizia nomi colonne (rimuove spazi invisibili)
         df1.columns = df1.columns.str.strip()
         df2.columns = df2.columns.str.strip()
         
-        # Rinominazione colonne per il merge
-        df1.rename(columns={'Data / Ora': 'Tempo'}, inplace=True)
+        # Rinominiamo le colonne chiave per il merge
+        # Nel Meteo la colonna è 'Data/Ora', nell'eolico è la prima
+        df1.rename(columns={'Data/Ora': 'Tempo'}, inplace=True)
         df2.rename(columns={df2.columns[0]: 'Tempo'}, inplace=True)
         
-        # Conversione date
+        # Conversione date forzata
         df1['Tempo'] = pd.to_datetime(df1['Tempo'], dayfirst=True, errors='coerce')
         df2['Tempo'] = pd.to_datetime(df2['Tempo'], dayfirst=True, errors='coerce')
         
-        # Unione
+        # Unione dei dati
         df = pd.merge(df1.dropna(subset=['Tempo']), df2.dropna(subset=['Tempo']), on='Tempo', how='inner')
         
-        # Conversione numerica forzata per evitare crash
-        cols_num = ['Vento (m/s)', 'Watt', 'Temp. Est', 'Umid. Est.', 'Temperatura', 'Pressione Mare', 'Umidità']
-        for col in cols_num:
+        # Pulizia colonne numeriche: rimuove virgole e converte in numeri
+        cols_target = ['Vento (m/s)', 'Watt', 'Temperatura', 'Pressione Mare', 'Umidità']
+        for col in cols_target:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '.'), errors='coerce')
         
         return df.sort_values(by='Tempo')
-    except Exception:
+    except Exception as e:
         return None
 
-# --- INTERFACCIA ---
+# --- APP ---
 st.title("🌦️ Langini: Intelligenza Energetica")
-
 df = carica_dati()
 
 if df is not None and not df.empty:
     ultima = df.iloc[-1]
+    df_12h = df[df['Tempo'] >= (df['Tempo'].max() - timedelta(hours=12))]
     
-    # Metriche (uso .get per sicurezza)
+    # Metriche
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Temperatura", f"{ultima.get('Temp. Est', ultima.get('Temperatura', 0)):.1f} °C")
-    c2.metric("Umidità", f"{ultima.get('Umid. Est.', ultima.get('Umidità', 0)):.0f} %")
+    c1.metric("Temperatura", f"{ultima.get('Temperatura', 0):.1f} °C")
+    c2.metric("Umidità", f"{ultima.get('Umidità', 0):.0f} %")
     c3.metric("Vento", f"{ultima.get('Vento (m/s)', 0):.1f} m/s")
     c4.metric("Produzione", f"{ultima.get('Watt', 0):.0f} W")
     
     st.markdown("---")
     
     # Grafici
-    df_12h = df[df['Tempo'] >= (df['Tempo'].max() - timedelta(hours=12))]
-    
     col1, col2 = st.columns(2)
     with col1:
         st.subheader("Vento vs Watt (12h)")
@@ -72,18 +71,16 @@ if df is not None and not df.empty:
         st.plotly_chart(fig1, use_container_width=True)
         
     with col2:
-        st.subheader("Temperatura vs Umidità (12h)")
+        st.subheader("Temp vs Umidità (12h)")
         fig2 = make_subplots(specs=[[{"secondary_y": True}]])
-        fig2.add_trace(go.Scatter(x=df_12h['Tempo'], y=df_12h.get('Temp. Est', df_12h.get('Temperatura', 0)), name="Temp", line=dict(color='orange')), secondary_y=False)
-        fig2.add_trace(go.Scatter(x=df_12h['Tempo'], y=df_12h.get('Umid. Est.', df_12h.get('Umidità', 0)), name="Umidità", line=dict(color='cyan')), secondary_y=True)
+        fig2.add_trace(go.Scatter(x=df_12h['Tempo'], y=df_12h.get('Temperatura', 0), name="Temp", line=dict(color='orange')), secondary_y=False)
+        fig2.add_trace(go.Scatter(x=df_12h['Tempo'], y=df_12h.get('Umidità', 0), name="Umidità", line=dict(color='cyan')), secondary_y=True)
         st.plotly_chart(fig2, use_container_width=True)
 
-    # Aggiornamento stabile
-    st.info("Aggiornamento automatico ogni 3 minuti.")
+    st.info("Dati aggiornati. La pagina si ricaricherà automaticamente tra 3 minuti.")
     time.sleep(180)
     st.rerun()
-
 else:
-    st.warning("Dati non caricati. Verifica che i fogli Google siano pubblici.")
+    st.warning("Dati non caricati. Verifica che i fogli Google siano pubblici e le colonne esistano.")
     time.sleep(10)
     st.rerun()
