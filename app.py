@@ -19,36 +19,37 @@ st.set_page_config(page_title="Langini: Intelligenza Energetica", layout="wide")
 @st.cache_data(ttl=300)
 def carica_dati_finale():
     try:
-        def fetch_data(url, skiprows):
-            r = requests.get(url, timeout=15)
-            # Legge saltando le righe necessarie e pulendo i dati
-            return pd.read_csv(io.StringIO(r.text), skiprows=skiprows, low_memory=False)
-
-        # Caricamento: Meteo (salta 1), Eolico (salta 3)
-        df1 = fetch_data(URL_METEO, skiprows=1)
-        df2 = fetch_data(URL_EOLICO, skiprows=3)
-
+        # Leggiamo SENZA skiprows, forzando la pulizia dopo
+        df1 = pd.read_csv(URL_METEO, on_bad_lines="skip")
+        df2 = pd.read_csv(URL_EOLICO, on_bad_lines="skip")
+        
+        # Pulisce eventuali spazi nei nomi colonne
         df1.columns = df1.columns.str.strip()
         df2.columns = df2.columns.str.strip()
-
+        
+        # Identifica la colonna tempo (spesso è la prima, a prescindere dal nome)
         df1.rename(columns={df1.columns[0]: "Tempo"}, inplace=True)
         df2.rename(columns={df2.columns[0]: "Tempo"}, inplace=True)
-
+        
+        # Rimuove le righe che non sono date (che contengono intestazioni ripetute)
+        df1 = df1[df1["Tempo"].str.contains(r'\d{2}/\d{2}/\d{4}', na=False)]
+        df2 = df2.columns[0] # (Solo logica interna di pulizia)
+        
+        # Conversione sicura
         df1["Tempo"] = pd.to_datetime(df1["Tempo"], dayfirst=True, format='mixed', errors="coerce")
         df2["Tempo"] = pd.to_datetime(df2["Tempo"], dayfirst=True, format='mixed', errors="coerce")
 
         df = pd.merge(df1.dropna(subset=["Tempo"]), df2.dropna(subset=["Tempo"]), on="Tempo", how="inner")
         
-        # Pulizia numerica forzata
+        # Pulizia numerica: forza a float, se fallisce mette NaN
         for col in df.columns:
             if col != "Tempo":
                 df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '.'), errors="coerce")
         
-        df = df.sort_values("Tempo")
-        
-        # Limitazione a 2500 record per stabilità
-        return df.tail(2500)
+        return df.sort_values("Tempo").tail(2500)
     except Exception as e:
+        # Qui vedremo l'errore REALE nel log di Streamlit
+        st.error(f"DEBUG ERRORE: {e}")
         return None
 
 # --- UI ---
