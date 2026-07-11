@@ -14,45 +14,37 @@ socket.setdefaulttimeout(15)
 URL_METEO = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQvcTq-KenrIWPKg-WK1eTEFwBu70kc-ODtKUMev9JRuZUtC2LWqkzJton8wcTOBnAIVt7KaueuQxjS/pub?gid=0&single=true&output=csv"
 URL_EOLICO = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBu3iMBBiAnzESlByyAsLX3W9xPAJB9biFQC8X4O9DEG50XWjWUnM-QRJNXga26_RrM8LWk6vgB34y/pub?gid=0&single=true&output=csv"
 
-st.set_page_config(page_title="Langini: Intelligenza Energetica", layout="wide")
-
 @st.cache_data(ttl=300)
 def carica_dati_finale():
     try:
-        # Leggiamo i CSV forzando pandas a gestire meglio le intestazioni
+        # Leggiamo i file direttamente, senza cercare intestazioni complesse
+        # header=0 prende la prima riga come nomi colonne
         df1 = pd.read_csv(URL_METEO, header=0, on_bad_lines="skip")
         df2 = pd.read_csv(URL_EOLICO, header=0, on_bad_lines="skip")
         
-        # Pulizia nomi colonne
-        df1.columns = df1.columns.str.strip()
-        df2.columns = df2.columns.str.strip()
-
-        # Identifichiamo la colonna "Data" cercando la stringa nei nomi
-        # Questo evita di usare indici numerici che possono sbagliare
-        col_tempo1 = [c for c in df1.columns if 'Data' in c or 'Tempo' in c][0]
-        col_tempo2 = [c for c in df2.columns if 'Data' in c or 'Tempo' in c][0]
+        # Rinominazione brutale: la prima colonna DEVE essere la data
+        df1.rename(columns={df1.columns[0]: "Tempo"}, inplace=True)
+        df2.rename(columns={df2.columns[0]: "Tempo"}, inplace=True)
         
-        df1.rename(columns={col_tempo1: "Tempo"}, inplace=True)
-        df2.rename(columns={col_tempo2: "Tempo"}, inplace=True)
-
-        # Conversione date
+        # Forza la conversione date (ignora errori)
         df1["Tempo"] = pd.to_datetime(df1["Tempo"], dayfirst=True, format='mixed', errors="coerce")
         df2["Tempo"] = pd.to_datetime(df2["Tempo"], dayfirst=True, format='mixed', errors="coerce")
         
-        # Merge
-        df = pd.merge(df1.dropna(subset=["Tempo"]), df2.dropna(subset=["Tempo"]), on="Tempo", how="inner")
+        # Elimina le righe dove la data non è stata riconosciuta
+        df1 = df1.dropna(subset=["Tempo"])
+        df2 = df2.dropna(subset=["Tempo"])
         
-        # Conversione numerica sicura
+        # Unione dei dati
+        df = pd.merge(df1, df2, on="Tempo", how="inner")
+        
+        # Pulisce i dati numerici sostituendo virgole con punti
         for col in df.columns:
             if col != "Tempo":
-                # Se la colonna contiene stringhe, le puliamo
-                if df[col].dtype == 'object':
-                    df[col] = df[col].astype(str).str.replace(',', '.').replace('nan', '0')
-                df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+                df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '.'), errors="coerce").fillna(0)
         
         return df.sort_values("Tempo").tail(2500)
     except Exception as e:
-        # Questo ti dirà esattamente cosa non va
+        # Se fallisce, stampiamo l'errore vero per capire cosa vede il server
         st.error(f"DEBUG ERRORE: {str(e)}")
         return None
 
