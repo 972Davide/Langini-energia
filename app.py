@@ -9,8 +9,7 @@ import time
 URL_METEO = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQvcTq-KenrIWPKg-WK1eTEFwBu70kc-ODtKUMev9JRuZUtC2LWqkzJton8wcTOBnAIVt7KaueuQxjS/pub?gid=0&single=true&output=csv"
 URL_EOLICO = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSBu3iMBBiAnzESlByyAsLX3W9xPAJB9biFQC8X4O9DEG50XWjWUnM-QRJNXga26_RrM8LWk6vgB34y/pub?gid=0&single=true&output=csv"
 
-
-st.set_page_config(page_title="Langini: Intelligenza Energetica ", layout="wide")
+st.set_page_config(page_title="Langini: Intelligenza Energetica", layout="wide")
 
 @st.cache_data(ttl=300)
 def carica_e_unisci():
@@ -27,14 +26,11 @@ def carica_e_unisci():
         
         df = pd.merge(df1, df2, on='Tempo', how='inner')
         
-        # --- MODIFICA CRITICA ---
         # Convertiamo in float SOLO le colonne che sappiamo essere numeriche
-        # Lasciamo perdere quelle che contengono testo come "Sereno"
         colonne_da_convertire = ['Vento (m/s)', 'Watt', 'Temperatura', 'Pressione Mare', 'Umidità', 'Umidita']
         
         for col in colonne_da_convertire:
             if col in df.columns:
-                # Trasforma in stringa, sostituisci virgola con punto, poi in numero
                 df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '.'), errors='coerce')
         
         return df.sort_values(by='Tempo')
@@ -48,9 +44,6 @@ st.title("🌦️ Langini: Intelligenza Energetica")
 df = carica_e_unisci()
 
 if df is not None and not df.empty:
-    ultima = df.iloc[-1]
-    adesso = df['Tempo'].max()
-    
     # Identificazione dinamica colonne
     col_temp = next((c for c in df.columns if 'Temperatur' in c), None)
     col_umid = next((c for c in df.columns if 'Umid' in c), None)
@@ -58,9 +51,13 @@ if df is not None and not df.empty:
     col_press = next((c for c in df.columns if 'Pression' in c), None)
     col_watt = next((c for c in df.columns if 'Watt' in c), None)
 
-    # Filtro ultime 12 ore
+    # Filtro ultime 12 ore (APPLICATO SUBITO)
+    adesso = df['Tempo'].max()
     limite_12h = adesso - timedelta(hours=12)
-    df_12h = df[df['Tempo'] >= limite_12h]
+    df_12h = df[df['Tempo'] >= limite_12h].dropna(subset=[col_temp, col_vento] if col_temp else [])
+    
+    # Se dopo il filtro il df è vuoto, usa l'ultimo dato disponibile
+    ultima = df_12h.iloc[-1] if not df_12h.empty else df.iloc[-1]
     
     # --- CALCOLO PREVISIONE ---
     limite_3h = adesso - timedelta(hours=3)
@@ -74,12 +71,12 @@ if df is not None and not df.empty:
         elif diff < -1.5: previsione = "Instabilità in arrivo"
         else: previsione = "Stabile"
 
-    # Produzioni
+    # Produzioni (calcolate sul dataset completo o filtrato come preferisci)
     prod_giornaliera = df[df['Tempo'].dt.date == adesso.date()][col_watt].sum() if col_watt else 0
     prod_settimanale = df[df['Tempo'] >= (adesso - timedelta(days=7))][col_watt].sum() if col_watt else 0
     prod_mensile = df[df['Tempo'] >= (adesso - timedelta(days=30))][col_watt].sum() if col_watt else 0
     
-    # --- METRICHE ---
+    # --- METRICHE (Utilizzano df_12h per min/max) ---
     c1, c2, c3, c4, c5 = st.columns(5)
     
     c1.metric("Temperatura", f"{ultima.get(col_temp, 0):.1f} °C", 
@@ -99,7 +96,7 @@ if df is not None and not df.empty:
     
     st.markdown("---")
     
-    # Grafico
+    # Grafico (Utilizza df_12h)
     st.subheader("📊 Analisi Temporale (Ultime 12 ore): Vento vs Watt")
     fig = make_subplots(specs=[[{"secondary_y": True}]])
     
@@ -118,7 +115,7 @@ if df is not None and not df.empty:
     
     st.plotly_chart(fig, use_container_width=True)
     
-    # --- TIMER AGGIORNAMENTO AUTOMATICO ---
+    # --- TIMER AGGIORNAMENTO ---
     time.sleep(180) 
     st.rerun()
     
